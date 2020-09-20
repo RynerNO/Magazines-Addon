@@ -1,0 +1,146 @@
+--[[
+  Helper functions for mags
+
+--]
+
+--[[
+Copyright (C) 2020 RynerNO
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License-]]
+--]]
+local DEBUG = 1
+
+
+
+function log(text)
+  if(DEBUG == 1) then
+    printf(text)
+  end 
+  return
+end
+
+function isUseMag(sec) 
+	if(ini_sys:r_bool_ex(sec, "use_mags")) then
+		local str =  ini_sys:r_string_ex(sec, "mag_class")
+		if(str == nil) then 
+			return false 
+		end
+		return true
+	end
+end
+
+function isMagazine(sec)
+
+	return ini_sys:r_bool_ex(sec,"is_mag", false)
+
+end
+-- Return index of first entry for given object
+function indexOf( t, object)
+	if "table" == type( t ) then
+			for i = 1, #t do
+					if object == t[i] then
+							return i
+					end
+			end
+			return -1
+	else
+					error("table.indexOf expects table for first argument, " .. type(t) .. " given")
+	end
+end
+
+-- Return number of items in the table
+function length(t)
+	if(type(t) ~= "table") then
+		return 0
+	end
+	return #t
+end
+-- Reverse the table
+function reverse(t)
+	if(type(t) ~= "table") then
+		return {}
+	end
+	local t_length = length(t)
+	local i = 1
+	local new_table = {}
+	while t_length ~= 0 do
+		new_table[i] = t[t_length]
+		i = i + 1
+		t_length = t_length - 1
+	end
+	return new_table
+end
+-- last item of the table
+function last_item(t)
+	if(type(t) ~= "table") then
+		return nil
+	end
+	local len = length(t)
+	return t[len]
+end
+
+-- Replace last item in the array
+function replace_last(t, new)
+	if(type(t) ~= "table") then
+		return {}
+	end
+	local new_table = {}
+	local len = length(t)
+	new_table = t
+	new_table[len] = new
+	return new_table
+end
+
+
+-- Iterate table while not find mag entry
+function getMagDataById(t, id)
+	if type(t) == "table" then
+			for k,v in pairs(t) do
+				if k == id then
+					return v
+				end
+			end
+			return nil
+	else
+					error("table.indexOf expects table for first argument, " .. type(t) .. " given")
+	end
+end
+
+function getMagAmmoCount(ammo_list)
+	local count = 0
+	if(type(ammo_list) == "table") then
+		for k,v in pairs(ammo_list) do
+			if(v.count ~= nil) then
+				count = count + v.count
+			end
+		end
+	end
+	return count
+end
+
+function set_condition(item, current, max)
+	local percent_load = current / max
+	item:set_condition(percent_load)
+
+end
+
+-- 
+function remove_last(t)
+	if(type(t) ~= "table") then
+		log('Expected table')
+		return {}
+	end
+	local len = length(t)
+	t[len] = nil
+	return t
+end
+
+function set_last(t, v)
+	if(type(t) ~= "table") then
+		log('Expected table')
+		return {}
+	end
+	local len = length(t)
+	t[len] = v
+	return t
+
+end

@@ -1,0 +1,540 @@
+--[[
+  Mags mod main file based on https://www.moddb.com/mods/stalker-anomaly/addons/anomaly-magazines.
+
+--]
+
+--[[
+Copyright (C) 2020 RynerNO
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License-]]
+--]]
+local helper = rynerno_helper
+local released_ammo_table = {}
+local player_skill = 1
+local player_skill_max = 3
+local exp_to_next_lvl = 2000
+local exp_default_to_next_lvl =  2000
+
+local exp_for_one_bullet = 5
+local deffault_delay = 800
+local bullet_loading = false
+
+
+local lastMode = 20
+-- Variables for calculate dummy ammo weight
+local dummy_ammo_section = "rn_dummy_weight_replacer"
+local dummy_weight_item_id = nil
+local dummy_total_weight = 0
+
+
+local IGNORE_AMMO_SECTIONS = {
+	[dummy_ammo_section] = true, 
+	["rn_mag_wpn_mp5"] = true,
+}
+mags_data = {}
+rn_weapon_data = {}
+local alife_mags_data = {}
+function on_game_start()
+	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("on_key_release",on_key_release)
+	RegisterScriptCallback("ActorMenu_on_item_drag_drop", on_item_drag_dropped)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update )
+	RegisterScriptCallback("actor_on_weapon_fired", actor_on_weapon_fired)
+	RegisterScriptCallback("ActorMenu_on_mode_changed", ActorMenu_on_mode_changed)
+	RegisterScriptCallback("actor_item_to_ruck", actor_item_to_ruck)
+	RegisterScriptCallback("actor_on_hud_animation_end", actor_on_hud_animation_end)
+	RegisterScriptCallback("actor_on_item_take", actor_on_item_take)
+	RegisterScriptCallback("load_state",load_state)
+	RegisterScriptCallback("save_state",save_state)
+end
+
+
+function rn_reload(ammo_type)
+		-- Checking if weapon is valid for using mags
+		helper.log('keypress event')
+		local weapon = db.actor:item_in_slot(db.actor:active_slot())
+		if(not weapon) then
+			helper.log('no wepon in hands')
+			return
+		end
+		
+		if(not helper.isUseMag(weapon:section())) then
+			helper.log('this weapon is not valid for use mags')
+			return
+		end
+		
+		-- Check if there is valid mag for than weapon
+		local mag = nil
+		db.actor:inventory_for_each(function (item) 
+			local mag_class = str_explode(ini_sys:r_string_ex(weapon:section(), "mag_class"), ",")
+			if not (mag_class and mag_class[1] ~= nil) then
+				return
+			end
+			for i=1, #mag_class do
+				if(mag_class[i] == item:section()) then
+					if(ammo_type) then
+						local ammo_data = mags_data[item:id()] and helper.last_item(mags_data[item:id()].ammo_list)
+						if(ammo_data.count == 0) then return end
+						if(ammo_data.type ~= ammo_type) then return end
+					end
+					local new_mag_total = mags_data[item:id()] and mags_data[item:id()].total_ammo or 0
+					local old_mag_total = mags_data[mag] and mags_data[mag].total_ammo or 0
+					if(new_mag_total > old_mag_total) then
+						mag = item:id()
+					end
+				else
+					return
+				end
+			end
+		end)
+		if mag == nil then return end
+		if(mags_data[mag] == nil) then return end
+		-- Remove that mag from inventory 
+		alife_release_id(mag)
+		rn_unload_mag(weapon)
+		-- Add weapon to weapon_data
+		
+		rn_weapon_data[weapon:id()] = mags_data[mag]
+		
+
+		-- Play reload animation
+		weapon:switch_state(7)
+		helper.log('RELOADING')
+end
+
+function weapon_eject_mag_precondition(weapon)
+
+	if (weapon and IsWeapon(weapon) and (not IsMelee(weapon))) then
+		
+		
+		if(rn_weapon_data[weapon:id()]) then
+		
+			return game.translate_string("st_mag_eject_magazine")
+			
+		end
+		
+	end
+
+end
+
+function weapon_eject_mag_functor(weapon)
+
+	rn_unload_mag(weapon)
+
+end
+
+
+
+function rn_unload_mag(weapon)
+	if(not weapon) then return end
+
+	if(not rn_weapon_data[weapon:id()]) then return end
+	local loaded_mag_data = rn_weapon_data[weapon:id()]
+	
+	local se_mag_obj = alife_create_item(loaded_mag_data.mag_type, db.actor)
+	alife_mags_data[se_mag_obj.id] = loaded_mag_data
+	rn_weapon_data[weapon:id()] = nil
+	weapon:unload_magazine(false)
+end
+
+
+function rn_return_all_ammo()
+	if(released_ammo_table[1] ~= nil) then
+		for k,v in pairs(released_ammo_table) do
+			create_ammo(v.type, db.actor:position(), db.actor:level_vertex_id(), db.actor:game_vertex_id(), AC_ID, v.count)	
+		
+		end
+		rn_unset_ammo_weight_after_remove()
+		released_ammo_table = {}
+		
+
+		-- Without this ammo will not be sorted
+		local time = time_global()
+		level.add_call(function() 
+			local difference = time_global() - time
+			return difference >= 50
+		end, rn_sort_inventory)
+	end
+end
+
+function rn_sort_inventory()
+	local inventory = GetActorMenu()
+	inventory:On_Sort(1,true)
+	inventory:On_Sort(1)
+
+
+
+end
+
+function rn_remove_all_ammo() 
+	if(dummy_weight_item_id == nil) then 
+		alife_create_item(dummy_ammo_section, db.actor)
+	end
+	-- Search for ammo and remove
+	db.actor:inventory_for_each(function (item)
+				if(IGNORE_AMMO_SECTIONS[item:section()] ~= nil) then 
+						helper.log(item:section())
+				end
+				if(IsAmmo(item) and IGNORE_AMMO_SECTIONS[item:section()] == nil) then 
+				
+					remove_ammo_pack(item)
+				end
+	end)
+	helper.log('released_ammo ---------------------------')
+end
+
+function rn_unset_ammo_weight_after_remove()
+	if not (dummy_weight_item_id) then return end
+
+	alife_release_id(dummy_weight_item_id)
+
+	dummy_weight_item_id = nil
+	dummy_total_weight = 0
+	
+end
+		
+function rn_set_ammo_weight_after_remove() 
+
+	if not (dummy_weight_item_id) then return end
+
+	local dummy_obj = level.object_by_id(dummy_weight_item_id)
+	if not (dummy_obj) then return end
+	helper.log(dummy_total_weight)
+	dummy_obj:set_weight(dummy_total_weight)
+	
+	
+end
+-- used to update bullets count in weapon and in mag data
+function rn_update_weapon(weapon, reload)
+		-- Check if it is instanse of weapon
+		if not (IsWeapon(weapon)) then return end 
+		-- Check if weapon id is in weapon data
+		if(rn_weapon_data[weapon:id()] == nil) then return end
+		-- Get ammo type and bullets count
+		local ammoSec = helper.last_item(rn_weapon_data[weapon:id()].ammo_list).type
+		local ammoList = str_explode(ini_sys:r_string_ex(weapon:section(), "ammo_class"), ",")
+		local ammoType
+				for i=1,#ammoList do
+					if (ammoList[i] == ammoSec) then
+						ammoType = i-1
+						break
+					end
+				end
+		helper.log('AMMO TYPE: ' .. ammoType)
+
+		local ammoCount = rn_weapon_data[weapon:id()].total_ammo
+		-- Set ammo type and bullets count
+		if(reload) then
+			weapon:unload_magazine(false)
+			weapon:set_ammo_type(ammoType)
+			weapon:set_ammo_elapsed(ammoCount)
+		end
+		if(not reload) then
+			weapon:unload_magazine(false)
+			weapon:set_ammo_type(ammoType)
+			-- To prevent bullets vaste 
+			weapon:set_ammo_elapsed(ammoCount + 1)
+		end
+		
+	
+		
+end
+function LoadBulletsIntoMagazine(ammo, mag)
+		-- Check if ammo type is correct
+		local mag_ammo_type = str_explode(ini_sys:r_string_ex(mag:section(), "ammo_class"), ",")
+		if(helper.indexOf(mag_ammo_type, ammo:section()) == -1) then
+			return
+		end
+		exp_add()
+		-- Calculate based on user skill delay betwen bullet loading
+		 local delay = deffault_delay - (player_skill * 50)
+
+		-- Set variable bullet_loading to true for ability to stop loading from another function
+		bullet_loading = true
+		-- Begin endless(almost) loop to load bullets
+		local last_load_time = time_global()
+
+		
+
+				local function add_bullet() 
+						if(bullet_loading == false) then
+							
+							return 
+						end
+						local mag_data = helper.getMagDataById(mags_data, mag:id())
+						local ammo_list = {}
+						local total_ammo = 0
+						local max_ammo = ini_sys:r_u32(mag:section(), "max_mag_size")
+						if(mag_data ~= nil) then
+							ammo_list = mag_data.ammo_list or {}
+							total_ammo = mag_data.total_ammo or 0
+						end
+						if(max_ammo == total_ammo) then
+							bullet_loading = false
+							return
+						end
+						-- Set magazine data, remove bullet from inventory an play load sound
+						local last_item = helper.last_item(ammo_list)
+						if(last_item ~= nil and last_item.type == ammo:section()) then
+							last_item.count = last_item.count + 1
+							ammo_list = helper.replace_last(ammo_list, last_item)
+						else
+							table.insert(ammo_list, {type=ammo:section(), count=1})
+						end
+						total_ammo = helper.getMagAmmoCount(ammo_list)
+						mags_data[mag:id()] = {
+							mag_type = mag:section(),
+							total_ammo = total_ammo,
+							ammo_list = ammo_list}
+						local box_size = ini_sys:r_float_ex(ammo:section(), "box_size")
+						local box_weight = ini_sys:r_float_ex(ammo:section(), "inv_weight")
+						local bullet_weight = box_weight / box_size
+						local weight = mag:weight() + bullet_weight
+						mag:set_weight(weight)
+						helper.set_condition(mag, total_ammo, ini_sys:r_u32(mag:section(), "max_mag_size"))
+						local ammo_box_size = ammo:ammo_get_count()
+						local new_box_size = ammo_box_size - 1
+					
+						xr_sound.set_sound_play(AC_ID,"reload_shell")
+						if(new_box_size == 0) then
+							alife_release_id(ammo:id())
+							bullet_loading = false
+						else
+							ammo:ammo_set_count(new_box_size)
+						end
+						
+						
+						last_load_time = time_global()
+						if(bullet_loading) then
+							level.add_call(function() 
+								local difference = time_global() - last_load_time
+								
+								return difference >= delay
+							end, add_bullet)
+						end
+						
+					
+				end
+				add_bullet()
+			
+			
+						
+					
+end
+
+function remove_ammo_pack(ammo)
+	table.insert(released_ammo_table, {
+		type = ammo:section(),
+		count = ammo:ammo_get_count()
+	})
+	-- Calculate 1 bullet weight
+	local box_size = ini_sys:r_float_ex(ammo:section(), "box_size")
+	local box_weight = ini_sys:r_float_ex(ammo:section(), "inv_weight")
+	local bullet_weight = box_weight / box_size
+	-- Weight to add
+	dummy_total_weight = dummy_total_weight + (bullet_weight * ammo:ammo_get_count())
+	alife_release_id(ammo:id())
+	rn_set_ammo_weight_after_remove()
+end
+
+
+function exp_add()
+	if(player_skill == player_skill_max) then
+		return
+	end
+	exp_to_next_lvl = exp_to_next_lvl - exp_for_one_bullet
+	if(exp_to_next_lvl <= 0) then
+		player_skill = player_skill + 1
+		exp_to_next_lvl = exp_default_to_next_lvl * player_skill 
+	end
+end
+
+-- AMMO WHEEL
+
+function rn_ammo_wheel()
+	local ammo_inv = {}
+
+	local function itr(temp, itm)
+		local section = itm:section()
+		if(not helper.isMagazine(section)) then return end
+		if(not mags_data[itm:id()]) then return end
+		local last_ammo = helper.last_item(mags_data[itm:id()].ammo_list)
+		if(last_ammo.count <= 0) then return end
+
+		ammo_inv[last_ammo.type] = (ammo_inv[last_ammo.type] or 0) + 1
+	end
+	db.actor:iterate_inventory(itr, nil)
+	return ammo_inv
+end
+
+-- CALLBACKS
+--[[ 
+args (obj, weapon, ammo_elapsed, grenade_elapsed, ammo_type, grenade_type)	
+--]]
+function actor_on_weapon_fired(obj, weapon)
+	if (obj:id() ~= AC_ID) then return end
+	-- Check if weapon is in mags_data
+	if (rn_weapon_data[weapon:id()] == nil) then return end
+	-- Decrease by 1 ammo_count in data or remove ammo type if it's 0
+	if(rn_weapon_data[weapon:id()].total_ammo == 0) then
+	
+		return
+	end
+	
+	local ammo_data = helper.last_item(rn_weapon_data[weapon:id()].ammo_list)
+	ammo_data.count = ammo_data.count - 1
+
+	if(ammo_data.count == 0 and helper.length(rn_weapon_data[weapon:id()].ammo_list) > 1) then
+		ammo_data = nil
+	end
+	local new_ammo_list = helper.set_last(rn_weapon_data[weapon:id()].ammo_list, ammo_data)
+	rn_weapon_data[weapon:id()].ammo_list = new_ammo_list
+	rn_weapon_data[weapon:id()].total_ammo = helper.getMagAmmoCount(rn_weapon_data[weapon:id()].ammo_list) 
+
+	-- Set weapon ammo type and ammo count
+	rn_update_weapon(weapon)
+end
+
+function actor_on_hud_animation_end(item,section,motion,state,slot)
+	-- Check if item is weapon
+	if not (IsWeapon(item))	then return end
+	-- Check for reload state
+	if(state ~= 7) then return end
+	-- Check if item can use mags
+	item:switch_state(0)
+	if(helper.isUseMag(item:section()) == false) then
+		helper.log('this weapon is not valid for use mags')
+		return
+	end
+	rn_update_weapon(item, true)
+	helper.log('RELOADING FINISHED')
+
+end
+	
+function actor_on_item_take(item)
+	if(IsAmmo(item) and IGNORE_AMMO_SECTIONS[item:section()] == nil and lastMode == 0) then
+		remove_ammo_pack(item)
+	end
+	
+end
+
+function actor_item_to_ruck(item)
+	
+	if(item:section() == dummy_ammo_section) then
+		helper.log('DUMMY WEIGHT ITEM ADDED')
+		dummy_weight_item_id = item:id()
+		rn_set_ammo_weight_after_remove()
+	end
+	local se_item = alife_object(item:id())
+	if(not se_item) then return end
+	if(not alife_mags_data[se_item.id]) then return end
+	mags_data[item:id()] = alife_mags_data[se_item.id]
+	helper.set_condition(item, mags_data[item:id()].total_ammo, ini_sys:r_u32(item:section(), "max_mag_size"))
+	alife_mags_data[se_item.id] = nil
+end
+--[[ 
+TODO: Use it for something or remove
+--]] 
+function on_key_release(key)
+	local bind = dik_to_bind(key)
+end
+
+function on_key_press(key)
+	bullet_loading = false
+	if(key == DIK_keys.DIK_HOME) then
+		helper.log('HOME PRESS')
+		local weapon = db.actor:item_in_slot(db.actor:active_slot())
+		if(weapon == nil) then return end
+		weapon:set_ammo_elapsed(29)
+	end
+	local bind = dik_to_bind(key)
+	if (bind == key_bindings.kWPN_RELOAD) then
+		rn_reload()
+	end
+
+end
+
+
+function save_state(m_data)
+	m_data.released_ammo_table = released_ammo_table
+	m_data.player_skill = player_skill
+	m_data.exp_to_next_lvl = exp_to_next_lvl
+	m_data.mags_data = mags_data
+	m_data.rn_weapon_data = rn_weapon_data 
+end
+
+function load_state(m_data)
+	released_ammo_table = m_data.released_ammo_table or {}
+	player_skill = m_data.player_skill or 1
+	exp_to_next_lvl = m_data.exp_to_next_lvl
+	mags_data = m_data.mags_data or {}
+	rn_weapon_data = m_data.rn_weapon_data or {}
+
+	if(exp_to_next_lvl == nil) then
+		exp_to_next_lvl = exp_default_to_next_lvl * player_skill
+	end
+
+end
+
+function actor_on_first_update()
+	-- Remove all ammo for weapons to prevent default game reload
+	helper.log('actor update')
+	if(db.actor ~= nil) then
+		rn_remove_all_ammo()
+	end
+	lastMode = 0
+end
+
+
+function ActorMenu_on_mode_changed(mode, last_mode) 
+
+	lastMode = mode
+	if(mode==0) then
+		if(last_mode==1) then
+			-- iventory closed
+			rn_remove_all_ammo()
+		elseif(last_mode==2) then
+		-- trade closed
+		rn_remove_all_ammo()
+		elseif(last_mode==3) then
+		-- upgrade closed
+		rn_remove_all_ammo()
+		elseif(last_mode==4) then
+		-- dead body search closed
+		rn_remove_all_ammo()
+		end
+	elseif(mode==1) then
+		-- inventory opened
+		rn_return_all_ammo()
+		
+		
+	elseif(mode==2) then
+		-- trade opened
+		rn_return_all_ammo()
+		
+	elseif(mode==3) then
+		-- upgrade opened
+		rn_return_all_ammo()
+		
+	elseif(mode==4) then
+		-- dead body search opened
+		rn_return_all_ammo()
+		
+	elseif(mode==10) then
+		-- dialog opened
+		rn_return_all_ammo()  
+	elseif(mode==11) then
+		-- dialog closed
+		rn_remove_all_ammo()
+	end
+end
+
+function on_item_drag_dropped(drag, drop, from_slot, to_slot)
+	if (from_slot ~= EDDListType.iActorBag) then
+		return
+	end
+	if(to_slot == EDDListType.iActorBag) then
+	if(IsAmmo(drag) and helper.isMagazine(drop:section())) then
+		LoadBulletsIntoMagazine(drag, drop)
+	 end
+	end
+end
