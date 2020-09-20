@@ -39,6 +39,8 @@ function on_game_start()
 	RegisterScriptCallback("ActorMenu_on_item_drag_drop", on_item_drag_dropped)
 	RegisterScriptCallback("actor_on_first_update", actor_on_first_update )
 	RegisterScriptCallback("actor_on_weapon_fired", actor_on_weapon_fired)
+	RegisterScriptCallback("ActorMenu_on_item_focus_receive", on_item_focus_receive)
+	RegisterScriptCallback("ActorMenu_on_item_focus_lost", on_item_focus_lost)
 	RegisterScriptCallback("ActorMenu_on_mode_changed", ActorMenu_on_mode_changed)
 	RegisterScriptCallback("actor_item_to_ruck", actor_item_to_ruck)
 	RegisterScriptCallback("actor_on_hud_animation_end", actor_on_hud_animation_end)
@@ -100,28 +102,6 @@ function rn_reload(ammo_type)
 		weapon:switch_state(7)
 		helper.log('RELOADING')
 end
-
-function weapon_eject_mag_precondition(weapon)
-
-	if (weapon and IsWeapon(weapon) and (not IsMelee(weapon))) then
-		
-		
-		if(rn_weapon_data[weapon:id()]) then
-		
-			return game.translate_string("st_mag_eject_magazine")
-			
-		end
-		
-	end
-
-end
-
-function weapon_eject_mag_functor(weapon)
-
-	rn_unload_mag(weapon)
-
-end
-
 
 
 function rn_unload_mag(weapon)
@@ -367,6 +347,17 @@ function rn_ammo_wheel()
 end
 
 -- CALLBACKS
+function on_item_focus_lost(item)
+	if not (item and IsWeapon(item) and rn_weapon_data[item:id()]) then return end
+	rn_update_weapon(item, true)
+end
+function on_item_focus_receive(item)
+	-- Not show ulnoad button
+	if not (item and IsWeapon(item) and rn_weapon_data[item:id()]) then return end
+	item:unload_magazine(false)
+	
+end
+
 --[[ 
 args (obj, weapon, ammo_elapsed, grenade_elapsed, ammo_type, grenade_type)	
 --]]
