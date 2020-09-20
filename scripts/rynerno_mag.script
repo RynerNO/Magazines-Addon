@@ -18,6 +18,7 @@ local exp_for_one_bullet = 5
 local deffault_delay = 800
 local bullet_loading = false
 
+local gc = game.translate_string
 
 local lastMode = 20
 -- Variables for calculate dummy ammo weight
@@ -33,6 +34,7 @@ local IGNORE_AMMO_SECTIONS = {
 mags_data = {}
 rn_weapon_data = {}
 local alife_mags_data = {}
+local hud_static = nil
 function on_game_start()
 	RegisterScriptCallback("on_key_press", on_key_press)
 	RegisterScriptCallback("on_key_release",on_key_release)
@@ -47,6 +49,61 @@ function on_game_start()
 	RegisterScriptCallback("actor_on_item_take", actor_on_item_take)
 	RegisterScriptCallback("load_state",load_state)
 	RegisterScriptCallback("save_state",save_state)
+end
+
+function updateHUD() 
+	local weapon = db.actor:item_in_slot(db.actor:active_slot())
+	if not (weapon and not IsMelee(weapon) and helper.isUseMag(weapon:section())) then return end
+	local hud = get_hud()
+	if(hud_static == nil) then
+		hud:AddCustomStatic("ryner_mags_ammo",true)
+		hud_static = hud:GetCustomStatic("ryner_mags_ammo")
+	end
+	local wnd = hud_static:wnd()
+	if not (rn_weapon_data[weapon:id()]) then  
+		wnd:TextControl():SetTextST(0 .. "%")
+		wnd:TextControl():SetTextColor(GetARGB(255, 176, 0, 0))
+		return
+	end
+	
+	local ammo_count = rn_weapon_data[weapon:id()].total_ammo
+	local max_ammo_count = ini_sys:r_string_ex(rn_weapon_data[weapon:id()].mag_type, "max_mag_size")
+	local ammo_count_in_percents = ammo_count / max_ammo_count * 100
+	local r = math.floor(176 - ammo_count_in_percents - ammo_count)
+	local g = math.floor(30 + ammo_count_in_percents + ammo_count)
+	local color = GetARGB(255, r, g, 0)
+	
+	wnd:TextControl():SetTextST(math.floor(ammo_count_in_percents) .. "%")
+	wnd:TextControl():SetTextColor(color)
+end
+function hideHUD() 
+	if(hud_static == nil) then return end
+	local wnd = hud_static:wnd()
+	wnd:TextControl():SetTextST("")
+end
+
+function build_desc_header(obj, sec, str, colors)
+	if(obj and rynerno_helper.isMagazine(obj:section())) then
+		local ammoCountTitle = gc('mag_ammo_loaded_count')
+		local mag_data = mags_data[obj:id()]
+		local ammo_count = (mag_data and mag_data.total_ammo) or 0
+		local max_ammo_count = ini_sys:r_u32(obj:section(), "max_mag_size")
+		str = " \\n \\n" .. ammoCountTitle .. ": " .. colors.clr_g .. ammo_count  .. colors.clr_2 .. " / " .. colors.clr_g .. max_ammo_count .. colors.clr_2 .. " \\n" 
+		if(mag_data) then
+			local title = gc("mag_ammo_types_count")
+			str = str .. " \\n" .. title .. ":" .. " \\n"
+			for i=1,#mag_data.ammo_list do
+				if(mag_data.ammo_list[i].count == 0) then return end
+				local ammo_translate_str = ini_sys:r_string_ex(mag_data.ammo_list[i].type,"inv_name_short")
+				local ammo_name = gc(ammo_translate_str)
+				local ammo_count = mag_data.ammo_list[i].count
+				str = str .. " \\n" .. colors.clr_o .. ammo_name .. colors.clr_2 ..": ".. colors.clr_g .. ammo_count .. colors.clr_2 .. " \\n"
+			end
+		end	
+	end
+
+	return str
+	
 end
 
 
@@ -103,7 +160,10 @@ function rn_reload(ammo_type)
 		helper.log('RELOADING')
 end
 
+function rn_add_mag(weapon, animation)
+	
 
+end
 function rn_unload_mag(weapon)
 	if(not weapon) then return end
 
@@ -214,7 +274,7 @@ function rn_update_weapon(weapon, reload)
 			-- To prevent bullets vaste 
 			weapon:set_ammo_elapsed(ammoCount + 1)
 		end
-		
+		updateHUD()
 	
 		
 end
@@ -347,6 +407,7 @@ function rn_ammo_wheel()
 end
 
 -- CALLBACKS
+
 function on_item_focus_lost(item)
 	if not (item and IsWeapon(item) and rn_weapon_data[item:id()]) then return end
 	rn_update_weapon(item, true)
@@ -389,6 +450,14 @@ function actor_on_hud_animation_end(item,section,motion,state,slot)
 	-- Check if item is weapon
 	if not (IsWeapon(item))	then return end
 	-- Check for reload state
+	-- state 1 - weapon in hands
+	-- state 2 - weapon hide
+	if(state == 2) then
+		hideHUD()
+	elseif(state == 1) then
+		updateHUD()
+	end
+	helper.log("STATE: " .. state)
 	if(state ~= 7) then return end
 	-- Check if item can use mags
 	item:switch_state(0)
@@ -471,6 +540,7 @@ function actor_on_first_update()
 	helper.log('actor update')
 	if(db.actor ~= nil) then
 		rn_remove_all_ammo()
+		updateHUD()
 	end
 	lastMode = 0
 end
@@ -483,39 +553,45 @@ function ActorMenu_on_mode_changed(mode, last_mode)
 		if(last_mode==1) then
 			-- iventory closed
 			rn_remove_all_ammo()
+			updateHUD() 
 		elseif(last_mode==2) then
 		-- trade closed
 		rn_remove_all_ammo()
+		updateHUD() 
 		elseif(last_mode==3) then
 		-- upgrade closed
 		rn_remove_all_ammo()
+		updateHUD() 
 		elseif(last_mode==4) then
 		-- dead body search closed
 		rn_remove_all_ammo()
+		updateHUD() 
 		end
 	elseif(mode==1) then
 		-- inventory opened
 		rn_return_all_ammo()
-		
+		hideHUD()
 		
 	elseif(mode==2) then
 		-- trade opened
 		rn_return_all_ammo()
-		
+		hideHUD()
 	elseif(mode==3) then
 		-- upgrade opened
 		rn_return_all_ammo()
-		
+		hideHUD()
 	elseif(mode==4) then
 		-- dead body search opened
 		rn_return_all_ammo()
-		
+		hideHUD()
 	elseif(mode==10) then
 		-- dialog opened
 		rn_return_all_ammo()  
+		hideHUD()
 	elseif(mode==11) then
 		-- dialog closed
 		rn_remove_all_ammo()
+		updateHUD()
 	end
 end
 
@@ -527,5 +603,13 @@ function on_item_drag_dropped(drag, drop, from_slot, to_slot)
 	if(IsAmmo(drag) and helper.isMagazine(drop:section())) then
 		LoadBulletsIntoMagazine(drag, drop)
 	 end
+	end
+	if(to_slot == EDDListType.iActorSlot) then
+		if(drop and isWeapon(drop) and helper.isUseMag(drop:section())) then
+			local state = wpn:get_state()
+			if(state == 1) then
+				
+			end
+		end
 	end
 end

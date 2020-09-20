@@ -34,6 +34,10 @@ COMMON
 		<text>Заряжено патронов</text>
 	</string>
 
+	<string id="mag_ammo_types_count">
+		<text>Типы патронов</text>
+	</string>
+
 <!--
 Pistols and MP's
 -->

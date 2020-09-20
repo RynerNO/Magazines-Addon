@@ -21,6 +21,9 @@ COMMON
 		<text>Add to loadout</text>
 	</string>
 
+	<string id="mag_ammo_types_count">
+		<text>Ammo types</text>
+	</string>
 
 <!--
 MAGAZINES
