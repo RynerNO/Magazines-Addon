@@ -153,15 +153,32 @@ function rn_reload(ammo_type)
 		-- Add weapon to weapon_data
 		
 		rn_weapon_data[weapon:id()] = mags_data[mag]
-		
+		mags_data[mag] = nil
 
 		-- Play reload animation
 		weapon:switch_state(7)
 		helper.log('RELOADING')
 end
 
-function rn_add_mag(weapon, animation)
-	
+-- Load magazine to weapon on drag drop
+function rn_add_mag_on_drop(weapon, mag)
+	if not (mag and helper.isMagazine(mag:section())) then return end
+	if(not weapon or IsMelee(weapon) or not IsWeapon(weapon)) then return end
+	if (rn_weapon_data[weapon:id()] ~= nil) then return end
+	if not (mags_data[mag:id()]) then return end
+	if(mags_data[mag:id()].total_ammo == 0) then return end
+	rn_weapon_data[weapon:id()] = mags_data[mag:id()]
+	mags_data[mag:id()] = nil
+	alife_release_id(mag:id())
+	local state = weapon:get_state()
+	helper.log('STATE WPN: ' .. state)
+	local weapon_in_hands = db.actor:item_in_slot(db.actor:active_slot())
+	-- I don't this there is need of double check
+	if(state == 0 and (weapon:id() == weapon_in_hands:id())) then
+		weapon:switch_state(7)
+	else
+		rn_update_weapon(weapon, false)
+	end
 
 end
 function rn_unload_mag(weapon)
@@ -605,11 +622,10 @@ function on_item_drag_dropped(drag, drop, from_slot, to_slot)
 	 end
 	end
 	if(to_slot == EDDListType.iActorSlot) then
-		if(drop and isWeapon(drop) and helper.isUseMag(drop:section())) then
-			local state = wpn:get_state()
-			if(state == 1) then
-				
-			end
+		if(not helper.isMagazine(drag:section())) then return end
+		if(drop and IsWeapon(drop) and helper.isUseMag(drop:section())) then
+			rn_add_mag_on_drop(drop, drag)
+		
 		end
 	end
 end

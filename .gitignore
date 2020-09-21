@@ -1,5 +1,4 @@
 scripts/**
-configs/igi_tasks
 configs/items/items
 configs/items/weapons/**
 configs/text/eng/**
