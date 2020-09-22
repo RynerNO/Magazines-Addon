@@ -1,0 +1,20 @@
+<w>
+	
+	
+	<loadout>
+		<frame x="325" y="300" width="400" height="400" stretch="1"> <!-- 138 -->
+			<texture>ui_itm_details</texture>
+		</frame>
+		<btn_close x="170" y="260" width="56" height="28" stretch="1" check_mode="0">
+			<text font="letterica16">ui_inv_close</text>
+			<texture>ui_button_ordinary</texture>
+		</btn_close>
+		
+		<inv_form x="0" y="0" width="306" height="574"/>
+		
+		<scroll_inv x="20" y="119" width="306" height="574"
+		right_ident="0" left_ident="0" top_indent="0" bottom_indent="0" vert_interval="0" always_show_scroll="0"/>
+	</loadout>
+
+
+</w>

@@ -641,6 +641,7 @@ function UIWheelAmmo:Reset(obj)
 	-- Collect all ammo in inventory
 	empty_table(self.ammo_inv)
 	local weapon = db.actor:item_in_slot(db.actor:active_slot())
+	-- RynerNO Mags
 	if(rynerno_helper.isUseMag(weapon:section())) then 
 		
 		self.ammo_inv = rynerno_mag.rn_ammo_wheel(weapon)
@@ -733,6 +734,7 @@ end
 function UIWheelAmmo:OnAmmo(n)
 	local wpn = db.actor:active_item()
 	if wpn and (wpn:section() == self.section) and self.avail[n] then
+	-- RynerNO Mags
 	if(rynerno_helper.isUseMag(wpn:section())) then
 		local ammo_class = str_explode(ini_sys:r_string_ex(wpn:section(), "ammo_class"), ",")
 		local ammo_type = ammo_class[n]

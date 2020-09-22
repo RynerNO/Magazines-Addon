@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="windows-1251"?>
 
 <string_table>
+<!--
+LOADOUT
+-->
 
+	<string id="ui_inv_close">
+		<text>Close</text>
+	</string>
 <!--
 COMMON
 -->
@@ -17,10 +23,9 @@ COMMON
 	<string id="st_mag_loadout_remove">
 		<text>Remove</text>
 	</string>
-	<string id="st_mag_loadout_add">
-		<text>Add to loadout</text>
+	<string id="st_mag_check_ammo">
+		<text>Check</text>
 	</string>
-
 	<string id="mag_ammo_types_count">
 		<text>Ammo types</text>
 	</string>

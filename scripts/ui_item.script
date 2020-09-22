@@ -569,7 +569,7 @@ function item_description(obj, str)
 	end
 	
 	str = build_desc_header(obj,sec,str) -- Header
-	str = rynerno_mag.build_desc_header(obj, sec, str, {clr_2 = clr_2, clr_g = clr_g, clr_o = clr_o}) -- Only used for mags description
+	str = rynerno_mag.build_desc_header(obj, sec, str, {clr_2 = clr_2, clr_g = clr_g, clr_o = clr_o, clr_r = clr_r}) -- Only used for mags description
 	str = build_desc_footer(obj,sec,str) -- Footer
 	
 	last_d_id = id

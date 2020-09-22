@@ -92,24 +92,12 @@ end
 
 
 -- Iterate table while not find mag entry
-function getMagDataById(t, id)
-	if type(t) == "table" then
-			for k,v in pairs(t) do
-				if k == id then
-					return v
-				end
-			end
-			return nil
-	else
-					error("table.indexOf expects table for first argument, " .. type(t) .. " given")
-	end
-end
 
 function getMagAmmoCount(ammo_list)
 	local count = 0
 	if(type(ammo_list) == "table") then
 		for k,v in pairs(ammo_list) do
-			if(v.count ~= nil) then
+			if(v and v.count ~= 0) then
 				count = count + v.count
 			end
 		end
@@ -118,7 +106,8 @@ function getMagAmmoCount(ammo_list)
 end
 
 function set_condition(item, current, max)
-	local percent_load = current / max
+	local cur = current or 0
+	local percent_load = cur / max
 	item:set_condition(percent_load)
 
 end
@@ -143,4 +132,50 @@ function set_last(t, v)
 	t[len] = v
 	return t
 
+end
+
+-- Print table from _g script
+
+function print_table(table, subs)
+	if(DEBUG == 0) then return end
+	local sub
+	if subs ~= nil then
+		sub = subs
+	else
+		sub = ""
+	end
+	for k,v in pairs(table) do
+		if type(v) == "table" then
+			print_table(v, sub.."["..k.."]----->")
+		elseif type(v) == "function" then
+			printf(sub.."%s = function",k)
+		elseif type(v) == "userdata" then
+			if (v.x) then
+				printf(sub.."%s = %s",k,utils_data.vector_to_string(v))
+			else
+				printf(sub.."%s = userdata", k)
+			end
+		elseif type(v) == "boolean" then
+					if v == true then
+							if(type(k)~="userdata") then
+									printf(sub.."%s = true",k)
+							else
+									printf(sub.."userdata = true")
+							end
+					else
+							if(type(k)~="userdata") then
+									printf(sub.."%s = false", k)
+							else
+									printf(sub.."userdata = false")
+							end
+					end
+		else
+			if v ~= nil then
+				printf(sub.."%s = %s", k,v)
+			else
+				printf(sub.."%s = nil", k,v)
+			end
+		end
+	end
+	
 end

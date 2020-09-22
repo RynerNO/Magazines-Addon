@@ -2,15 +2,36 @@
 
 
 <string_table>
+<!--
+LOADOUT
+-->
 
+	<string id="ui_inv_close">
+		<text>«акрыть</text>
+	</string>
 <!--
 COMMON
 -->
+	<string id="st_mag_weapon_jammed">
+		<text>оружие заклинило</text>
+	</string>
 	<string id="st_mag_eject_magazine">
 		<text>извлечь магазин</text>
 	</string>
 	<string id="st_mag_unload_ammo">
 		<text>разр€дить</text>
+	</string>
+	<string id="st_mag_loadout_remove">
+		<text>убрать из разгрузки</text>
+	</string>
+	<string id="st_mag_loadout_add">
+		<text>добавить в разгрузку</text>
+	</string>
+	<string id="mag_ammo_types_count">
+		<text>“ипы патронов</text>
+	</string>
+	<string id="st_mag_check_ammo">
+		<text>проверить</text>
 	</string>
 
 <!--
@@ -32,10 +53,6 @@ COMMON
 
 	<string id="mag_ammo_loaded_count">
 		<text>«ар€жено патронов</text>
-	</string>
-
-	<string id="mag_ammo_types_count">
-		<text>“ипы патронов</text>
 	</string>
 
 <!--
