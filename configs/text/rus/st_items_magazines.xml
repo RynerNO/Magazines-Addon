@@ -25,7 +25,10 @@ COMMON
 		<text>Убрать из разгрузки</text>
 	</string>
 	<string id="st_mag_loadout_add">
-		<text>добавить в разгрузку</text>
+		<text>Добавить в разгрузку</text>
+	</string>
+	<string id="st_mag_loadout_open">
+		<text>Открыть разгрузку</text>
 	</string>
 	<string id="mag_ammo_types_count">
 		<text>Типы патронов</text>

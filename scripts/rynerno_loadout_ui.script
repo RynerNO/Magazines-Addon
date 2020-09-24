@@ -27,18 +27,22 @@ function get_loadout_ui()
   
     
   if (GUI) and (not GUI:IsShown()) then
-    
-		GUI:Reset()
+    local inventory = GetActorMenu()
     GUI:ShowDialog(true)
     GUI:Show(true)
+    if(inventory:IsShown()) then
+		  GUI:Reset()
+    end
     keybind_pass()
-    local inventory = GetActorMenu()
+    
     -- Don't register gui or inventory won't work
     if(inventory:IsShown()) then return GUI end
     
     -- Register ui when opened without inventory
     Register_UI("RN_UILoadout")
     _GUIs_keyfree["RN_UILoadout"] = true
+    
+    GUI:Reset()
     return GUI
   end
   
@@ -121,7 +125,10 @@ function RN_UILoadout:Reset()
   
   self.highlight_mag = nil
   local loadout = db.actor:item_in_slot(7)
-  helper.log(loadout:id())
+  if not (loadout) then
+    self:Close()
+    return
+  end
   local mags_table = rynerno_loadout.getMagsTable(loadout:id())
   self.CC:Reinit( mags_table )
   self.CC:Show(true)

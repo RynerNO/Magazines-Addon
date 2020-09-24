@@ -14,6 +14,7 @@ local BULLETS_CHECK_DELAY = 1500
 
 
 
+--
 
 -- Colors
 
@@ -34,6 +35,8 @@ local clr_2  = utils_xml.get_color("ui_gray_1")
 
 -----------
 local helper = rynerno_helper
+local ld = rynerno_loadout
+local ld_ui = rynerno_loadout_ui
 local released_ammo_table = {}
 local player_skill = 1
 local player_skill_max = 3
@@ -178,27 +181,28 @@ function rn_reload(ammo_type)
 		end
 		
 		-- Check if there is valid mag for than weapon
-		local mag = nil
-		db.actor:inventory_for_each(function (item) 
-			local mag_class = str_explode(ini_sys:r_string_ex(weapon:section(), "mag_class"), ",")
-			if not (mag_class and mag_class[1]) then return end
-			for i=1, #mag_class do
-				if(mag_class[i] == item:section()) then
-					-- If ammo type specified then check last loaded ammo in mags
-					if(ammo_type) then
-						local ammo_data = mags_data[item:id()] and helper.last_item(mags_data[item:id()].ammo_list)
-						if(ammo_data.count == 0) then return end
-						if(ammo_data.type ~= ammo_type) then return end
+		local loadout = db.actor:item_in_slot(7)
+		if not (loadout and ld.isExists(loadout:id())) then return end
+		local mag_types = helper.getMagTypes(weapon:section())
+		local loadout_mags = loadouts[loadout:id()]
+		local mag
+		for k,v in pairs(loadout_mags) do
+			if(helper.indexOf(mag_types, v.mag_type) ~= -1) then
+				if(ammo_type) then
+					local last_item = helper.last_item(v.ammo_list)
+					if(last_item.type == ammo_type) then
+						if not (mag) then mag = v end
+						if(mag and mag.total_ammo > v.total_ammo) then mag = v end
 					end
-
-					local new_mag_total = mags_data[item:id()] and mags_data[item:id()].total_ammo or 0
-					local old_mag_total = mag and mags_data[mag:id()] and mags_data[mag:id()].total_ammo or 0
-					if(new_mag_total > old_mag_total) then
-						mag = item
-					end
+				elseif(not ammo_type) then
+					if not (mag) then mag = v end
+					if(mag and mag.total_ammo > v.total_ammo) then mag = v end
+					
 				end
+				
 			end
-		end)
+		end
+		
 		if (mag == nil) then return end
 
 		-- Unload mag from weapon, before reload
@@ -211,16 +215,20 @@ end
 
 
 function rn_load_mag(weapon, mag) 
-	if not (mag and helper.isMagazine(mag:section())) then return end
+	if not (mag) then return end
 	if(not weapon or IsMelee(weapon) or not IsWeapon(weapon)) then return end
 	if (rn_weapon_data[weapon:id()] ~= nil) then return end
-	if not (mags_data[mag:id()] and mags_data[mag:id()].total_ammo ~= 0) then return end
-	-- Add mag data to weapon data
-	rn_weapon_data[weapon:id()] = mags_data[mag:id()]
-	-- Remove mag data from mags_data
-	mags_data[mag:id()] = nil
-	-- Remove mag from inventory
-	alife_release_id(mag:id())
+	local loadout = db.actor:item_in_slot(7)
+	if ((mags_data[mag.id] and mags_data[mag.id].total_ammo ~= 0)) then 
+			-- Add mag data to weapon data
+			rn_weapon_data[weapon:id()] = mag
+			-- Remove mag data from mags_data
+			mags_data[mag.id] = nil
+			-- Remove mag from inventory
+	elseif (loadout and ld.getMag(loadout:id(), mag.id)) then
+		rn_weapon_data[weapon:id()] = mag
+		loadouts[loadout:id()][mag.id] = nil
+	end
 	-- Check weapon state, if 0 or 1 then play reload animation
 	local state = weapon:get_state()
 	helper.log('STATE WPN: ' .. state)
@@ -243,12 +251,34 @@ function rn_unload_mag(weapon)
 		loaded_mag_data.checked = true
 		loaded_mag_data.fired = nil
 	end
-	local se_mag_obj = alife_create_item(loaded_mag_data.mag_type, db.actor)
-	if(loaded_mag_data.total_ammo ~= 0) then
-		alife_mags_data[se_mag_obj.id] = loaded_mag_data
+	
+	
+	local obj = level.object_by_id(loaded_mag_data.id)
+	if(obj) then
+		helper.set_condition(obj, loaded_mag_data.total_ammo, ini_sys:r_u32(obj:section(), "max_mag_size"))
 	end
 	rn_weapon_data[weapon:id()] = nil
 	weapon:unload_magazine(false)
+	if(loaded_mag_data.total_ammo ~= 0 and lastMode == 1) then
+		mags_data[loaded_mag_data.id] = loaded_mag_data
+		return
+	elseif(loaded_mag_data.total_ammo == 0 and lastMode == 1) then
+		return
+	end
+	local loadout = db.actor:item_in_slot(7)
+	if not (loadout) then
+		db.actor:drop_item(obj)
+		mags_data[loaded_mag_data.id] = loaded_mag_data
+	end
+	local avaliable_slots = ld.get_available_cap(loadout)
+	local reg_slots = ld.get_required_mag_cap(loaded_mag_data.mag_type)
+	avaliable_slots = avaliable_slots - reg_slots
+	if(avaliable_slots <  0) then
+		db.actor:drop_item(obj)
+		mags_data[loaded_mag_data.id] = loaded_mag_data
+	else
+		loadouts[loadout:id()][loaded_mag_data.id] = loaded_mag_data
+	end
 end
 
 function rn_check_bullets(mag)
@@ -366,6 +396,7 @@ function LoadBulletsIntoMagazine(ammo, mag)
 						end
 						total_ammo = helper.getMagAmmoCount(ammo_list)
 						mags_data[mag:id()] = {
+							id = mag:id(),
 							checked = checked,
 							mag_type = mag:section(),
 							total_ammo = total_ammo,
@@ -493,19 +524,21 @@ end
 
 -- AMMO WHEEL Called from item_weapon.script
 
-function rn_ammo_wheel()
+function rn_ammo_wheel(wpn)
 	local ammo_inv = {}
+	local loadout = db.actor:item_in_slot(7)
+	local mag_types = getMagTypes(wpn:section())
 
-	local function itr(temp, itm)
-		local section = itm:section()
-		if(not helper.isMagazine(section)) then return end
-		if(not mags_data[itm:id()]) then return end
-		local last_ammo = helper.last_item(mags_data[itm:id()].ammo_list)
-		if(last_ammo.count <= 0) then return end
+	if not (loadout and ld.isExists(loadout:id())) then return ammo_inv end
+	for k,v in pairs(loadouts[loadout:id()]) do
+		if(helper.indexOf(mag_types, v.type) ~= -1) then
+			local last_ammo = helper.last_item(v.ammo_list)
+			if(last_ammo.count <= 0) then return end
 
-		ammo_inv[last_ammo.type] = (ammo_inv[last_ammo.type] or 0) + 1
+			ammo_inv[last_ammo.type] = (ammo_inv[last_ammo.type] or 0) + 1
+			end
 	end
-	db.actor:iterate_inventory(itr, nil)
+
 	return ammo_inv
 end
 
@@ -657,12 +690,7 @@ function actor_item_to_ruck(item)
 		dummy_weight_item_id = item:id()
 		rn_set_ammo_weight_after_remove()
 	end
-	local se_item = alife_object(item:id())
-	if(not se_item) then return end
-	if(not alife_mags_data[se_item.id]) then return end
-	mags_data[item:id()] = alife_mags_data[se_item.id]
-	helper.set_condition(item, mags_data[item:id()].total_ammo, ini_sys:r_u32(item:section(), "max_mag_size"))
-	alife_mags_data[se_item.id] = nil
+	
 end
 --[[ 
 TODO: Use it for something or remove
@@ -675,8 +703,10 @@ function on_key_press(key)
 	magazine_interaction = false
 	if(key == DIK_keys.DIK_HOME) then
 		helper.log('MODE:' .. lastMode)
+		local loadout = db.actor:item_in_slot(7)
+		if(not loadout) then return end
 		if(lastMode == 0 or lastMode == 20 or lastMode == 1) then  
-			UI_t = rynerno_loadout_ui.get_loadout_ui()
+			UI_t = ld_ui.get_loadout_ui()
 		end
 	end
 	local bind = dik_to_bind(key)
@@ -789,14 +819,16 @@ function on_item_drag_dropped(drag, drop, from_slot, to_slot)
 		LoadBulletsIntoMagazine(drag, drop)
 	elseif(drop and IsWeapon(drop) and helper.isUseMag(drop:section())) then
 		if(not helper.isMagazine(drag:section())) then return end
-		rn_load_mag(drop, drag)
+		if(not mags_data[drag:id()]) then return end
+		rn_load_mag(drop, mags_data[drag:id()])
 	 
 	 end
 	end
 	if(to_slot == EDDListType.iActorSlot) then
 		if(not helper.isMagazine(drag:section())) then return end
 		if(drop and IsWeapon(drop) and helper.isUseMag(drop:section())) then
-			rn_load_mag(drop, drag)
+			if(not mags_data[drag:id()]) then return end
+			rn_load_mag(drop, mags_data[drag:id()])
 		
 		end
 	end

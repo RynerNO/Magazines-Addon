@@ -9,7 +9,7 @@ This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAl
 --]]
 local DEBUG = 1
 
-
+local MAG_TYPE_S = "rn_mags"
 
 function log(text)
   if(DEBUG == 1) then
@@ -19,13 +19,8 @@ function log(text)
 end
 
 function isUseMag(sec) 
-	if(ini_sys:r_bool_ex(sec, "use_mags")) then
-		local str =  ini_sys:r_string_ex(sec, "mag_class")
-		if(str == nil) then 
-			return false 
-		end
-		return true
-	end
+	if(length(getMagTypes(sec)) == 0) then return false end
+	return true
 end
 
 function isMagazine(sec)
@@ -178,4 +173,23 @@ function print_table(table, subs)
 		end
 	end
 	
+end
+
+
+function starts_with(str, start)
+	return str:sub(1, #start) == start
+end
+
+
+function getMagTypes(sec)
+	local short_name = str_explode(sec, "_")
+	if not (short_name[1] and short_name[2]) then return end
+ 	short_name = short_name[1] .."_" .. short_name[2]
+	local mag_types = ini_sys:r_string_ex(MAG_TYPE_S, short_name)
+	if(mag_types) then 
+		mag_types = str_explode(mag_types, ",") 
+	else 
+		mag_types = {}
+	end
+	return mag_types
 end

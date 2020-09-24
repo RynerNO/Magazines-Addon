@@ -125,3 +125,11 @@ function getMagsTable(id)
 	end
 	return t
 end
+
+function getMag(lID, mID)
+  if(isExists(lID)) then
+    local mag = rynerno_mag.loadouts[lID][mID]
+    return mag
+  end
+  return nil
+end

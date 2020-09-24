@@ -70,3 +70,15 @@ function add_to_loadout_precondition(mag)
 		return game.translate_string("st_mag_loadout_add")
 	end
 end
+
+function open_loadout_condition(obj)
+	local loadout = db.actor:item_in_slot(7)
+	if(obj and loadout and loadout:id() == obj:id()) then
+		return game.translate_string("st_mag_loadout_open")
+	end 
+
+end
+
+function open_loadout_action(obj)
+	rynerno_loadout_ui.get_loadout_ui()
+end

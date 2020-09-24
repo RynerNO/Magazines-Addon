@@ -574,6 +574,10 @@ function UIInventory:ParseInventory(npc, all, id_list)
 			if(id == obj:id()) then return end
 		end
 	end
+	for id,mag in pairs(rynerno_mag.rn_weapon_data) do
+			if(mag and mag.id == obj:id()) then return end
+
+	end
 		-- Parsing for kinds, according to sorter
 		if pkind["s_all"] or pkind[kind] then
 			if id_list then
