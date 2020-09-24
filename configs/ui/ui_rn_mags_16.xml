@@ -1,20 +1,29 @@
 <w>
-	
-	
-	<loadout>
-		<frame x="325" y="300" width="400" height="400" stretch="1"> <!-- 138 -->
+
+	<loadout x="325" y="300" width="370" height="400" stretch="1">
+		
+		<background x="0" y="0" width="370" height="400" stretch="1">
 			<texture>ui_itm_details</texture>
-		</frame>
-		<btn_close x="170" y="260" width="56" height="28" stretch="1" check_mode="0">
-			<text font="letterica16">ui_inv_close</text>
-			<texture>ui_button_ordinary</texture>
+		</background>
+			<btn_close x="120" y="270" width="140" height="24" stretch="1" check_mode="0">
+			<text font="graffiti22">ui_inv_close</text>
+			<texture>ui_inGame2_big_inventory_button</texture>
 		</btn_close>
 		
-		<inv_form x="0" y="0" width="306" height="574"/>
-		
-		<scroll_inv x="20" y="119" width="306" height="574"
-		right_ident="0" left_ident="0" top_indent="0" bottom_indent="0" vert_interval="0" always_show_scroll="0"/>
-	</loadout>
 
+
+		
+		<cells x="70" y="73" width="250" height="170"/>
+	</loadout>
+#include "ui\ui_inv_btn_35.xml"
+
+		<hint_wnd x="0" y="0" width="300" height="100">
+	    <background x="0" y="0" width="300" height="100">
+		    <texture>ui_icons_PDA_tooltips</texture>
+	    </background>
+	    <text x="20" y="20" width="275" height="100">
+	    	<text font="letterica16" r="140" g="140" b="140" complex_mode="1" align="l" vert_align="t"/>
+	    </text>
+	</hint_wnd>
 
 </w>

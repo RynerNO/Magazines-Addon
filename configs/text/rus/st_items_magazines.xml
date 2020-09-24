@@ -22,7 +22,7 @@ COMMON
 		<text>разрядить</text>
 	</string>
 	<string id="st_mag_loadout_remove">
-		<text>убрать из разгрузки</text>
+		<text>Убрать из разгрузки</text>
 	</string>
 	<string id="st_mag_loadout_add">
 		<text>добавить в разгрузку</text>

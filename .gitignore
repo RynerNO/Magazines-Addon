@@ -10,10 +10,16 @@ localization.ltx
 !rynerno_mag.script
 !rynerno_helper.script
 !item_weapon.script
+!ui_inventory.script
+!rynerno_loadout.script
+!rynerno_loadout_ui.script
+!rynerno_mag_functors.script
 !ui_item.script
 !utils_ui.script
 !item_base.ltx
 !rynerno_mag.ltx
 !w_mp5.ltx
 !st_items_magazines.xml
+!rynerno_items_assigment.ltx
+
 textures/ui/ui_icon_equipment.thm

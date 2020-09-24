@@ -1,0 +1,277 @@
+local helper = rynerno_helper
+local K_Timer   = false
+local gc = game.translate_string
+-- Copy paste from ui_inventory
+function keybind_pass()
+	-- I added this to prevent inventory closing after starting because of release keybind
+	if (K_Timer and (time_global() > K_Timer + 200)) or (not K_Timer) then
+		K_Timer = time_global()
+		return true
+	end
+	return false
+end
+GUI = nil 
+local clr_r,clr_2,clr_d,clr_w,clr_o
+local w_unit = game.translate_string("st_kg")
+function get_gui_inst()
+  if (not GUI) then
+		GUI = RN_UILoadout()
+  end
+  return GUI
+end
+function get_loadout_ui()
+  if (not GUI) then
+		GUI = RN_UILoadout()
+	end
+	
+  
+    
+  if (GUI) and (not GUI:IsShown()) then
+    
+		GUI:Reset()
+    GUI:ShowDialog(true)
+    GUI:Show(true)
+    keybind_pass()
+    local inventory = GetActorMenu()
+    -- Don't register gui or inventory won't work
+    if(inventory:IsShown()) then return GUI end
+    
+    -- Register ui when opened without inventory
+    Register_UI("RN_UILoadout")
+    _GUIs_keyfree["RN_UILoadout"] = true
+    return GUI
+  end
+  
+end
+
+class "RN_UILoadout" (CUIScriptWnd)
+
+function RN_UILoadout:__init() super()
+  self.mags_cells = {}
+  self.highlight_mag = nil
+  self.firstClick = false
+  clr_r = utils_xml.get_color("d_red")
+	clr_2 = utils_xml.get_color("ui_gray_1")
+	clr_d = utils_xml.get_color("ui_gray_2")
+	clr_w = utils_xml.get_color("pda_white")
+  clr_o = utils_xml.get_color("d_orange")
+  self:InitControls()
+ 
+  self:InitCallBacks()
+  
+end
+
+function RN_UILoadout:__finalize()
+end
+function RN_UILoadout:On_CC_Hover(bag, idx)
+  local cell = self.CC.cell[idx]
+  if(cell and cell.ID) then 
+    local name = ui_item.get_sec_name(cell.section)
+    local str = clr_w .. name .. " \\n \\n"
+    local _str = ""
+    local obj = level.object_by_id(cell.ID)
+    if(obj) then
+      _str = rynerno_mag.build_desc_header(obj, "", _str)
+    end
+    str = str .. _str
+    self:SetHint(str)
+  else
+    self.hint_wnd:Show(false)
+  end
+  -- Hint for inventory
+  
+end
+function RN_UILoadout:InitControls()
+	self:SetWndRect(Frect():set(0,0,1024,768))
+	--self:SetAutoDelete(true)
+	
+	local xml
+	
+	self.xml = CScriptXmlInit()
+	xml = self.xml
+  xml:ParseFile("ui_rn_mags.xml")
+  self.dialog	= xml:InitStatic("loadout", self)
+  self.background = xml:InitStatic("loadout:background", self.dialog)
+  self.inventory = nil
+
+  self.hint_wnd = xml:InitFrame("hint_wnd:background", self)
+	self.hint_wnd:SetAutoDelete(false)
+	self.hint_wnd_text = xml:InitTextWnd("hint_wnd:text",self.hint_wnd)
+  self.hint_wnd:Show(false)
+  
+  local btn = xml:Init3tButton("loadout:btn_close", self.dialog)
+  self:Register(btn, "btn_close")
+  self.CC  = utils_ui.UICellContainer("RN_UILoadout_bag", self, nil, "loadout:cells", self.dialog, nil, true)
+  self.cell_props = utils_ui.UICellProperties(self)
+end
+
+
+function RN_UILoadout:InitCallBacks()
+  self:AddCallback("btn_close", ui_events.BUTTON_CLICKED, self.Close, self)
+end
+
+function RN_UILoadout:Reset()
+  self.inventory = nil
+  self.firstClick = false
+  local inventory = GetActorMenu()
+  if(inventory:IsShown()) then
+     self.inventory = inventory
+    
+  end
+  
+  self.highlight_mag = nil
+  local loadout = db.actor:item_in_slot(7)
+  helper.log(loadout:id())
+  local mags_table = rynerno_loadout.getMagsTable(loadout:id())
+  self.CC:Reinit( mags_table )
+  self.CC:Show(true)
+  self:AllowMovement( true )
+end
+function RN_UILoadout:On_CC_Mouse1_DB(bag, idx)
+  helper.log('Mouse DB')
+  if(bag == "actor_bag") then
+    local cell = self.inventory.CC["actor_bag"].cell[idx]
+    local mag_obj = level.object_by_id(cell.ID)
+    if (mag_obj) then
+      rynerno_loadout.transfer_from_inv(mag_obj)
+    end
+  elseif(bag == "RN_UILoadout_bag") then
+      local cell = self.CC.cell[idx]
+      local mag_obj = level.object_by_id(cell.ID)
+      if (mag_obj) then
+        rynerno_loadout.transfer_to_inv(mag_obj)
+      end
+  end
+
+end
+function RN_UILoadout:On_Mouse1_DB_inv(id)
+  local m_obj = level.object_by_id(id)
+  if(m_obj and helper.isMagazine(m_obj:section())) then
+    
+    rynerno_loadout.transfer_from_inv(m_obj)
+  end
+end
+function RN_UILoadout:Update()
+	CUIScriptWnd.Update(self)
+	local old_id = self.highlight_mag
+  self.highlight_mag = nil
+  self.CC:Update()
+  if(self.inventory) then
+    self.inventory:Update()
+    local cells = self.inventory.CC["actor_bag"].cell
+    for k,v in pairs(cells) do
+        if (v:IsCursorOverWindow()) then
+          self.highlight_mag = v.ID
+        end
+    end
+  end
+  
+end 
+
+function RN_UILoadout:SetHint(text,pos)
+	if (text == "") then
+		return
+	end
+	self.hint_wnd:Show(true)
+	self.hint_wnd_text:SetText(text)
+	self.hint_wnd_text:AdjustHeightToText()
+	
+	local w = self.hint_wnd:GetWidth()
+	w = w >= 96 and w or 96
+	local h = self.hint_wnd_text:GetHeight()+44
+	h = h >= 96 and h or 96
+	self.hint_wnd:SetWndSize(vector2():set(w,h))
+	
+	pos = pos or GetCursorPosition()
+	pos.y = pos.y - self.hint_wnd:GetHeight()
+	pos.x = pos.x - self.hint_wnd:GetWidth()
+	self.hint_wnd:SetWndPos(pos)
+	
+	FitInRect(self.hint_wnd,Frect():set(0,0,1024,768),0,100)
+end
+
+-- Callback utils_ui
+
+function RN_UILoadout:On_CC_Mouse1(ID, idx) 
+  self:MagClicked()
+end
+function RN_UILoadout:On_CC_Mouse2(bag, idx)
+  local cell = self.CC.cell[idx]
+  local obj
+  if(cell) then
+    obj = level.object_by_id(cell.ID)
+    if not (obj) then return end
+    
+    self.cell_props:Reset(nil, {"transfer_to_inv"}, {gc("st_mag_loadout_remove")}, {{obj}})
+  end
+  
+end
+
+function RN_UILoadout:transfer_to_inv(mag)
+
+
+  rynerno_loadout.transfer_to_inv(mag)
+
+end
+function RN_UILoadout:MagClicked()
+  helper.log("Clicked")
+end
+
+
+
+
+function RN_UILoadout:OnKeyboard(dik, keyboard_action)
+	local res = CUIScriptWnd.OnKeyboard(self,dik,keyboard_action)
+  if (res == false) then
+    local bind = dik_to_bind(dik)
+    if keyboard_action == ui_events.WINDOW_KEY_PRESSED then
+      if (bind == key_bindings.kINVENTORY) or (bind == key_bindings.kUSE) then
+          self:Close()
+          return
+      end
+
+      -- Hack to detect double click on inventory cell
+      if dik == DIK_keys.MOUSE_1 then
+        helper.log('Click')
+        if(self.firstClick) then 
+          helper.log('Double click')
+          self:On_Mouse1_DB_inv(self.highlight_mag)
+          self.firstClick = false
+          return
+        end
+        self.firstClick = true
+        local click_time = time_global()
+        level.add_call(function() 
+          local diff = time_global() - click_time
+          return diff > 280
+        end, function() 
+          self.firstClick = false
+        end)
+      end
+      if dik == DIK_keys.DIK_ESCAPE then
+        self:Close()
+        return
+      end
+      if(dik == DIK_keys.DIK_HOME and self:IsShown() and keybind_pass()) then
+        self:Close()
+        return
+      end
+    end
+    if(self.inventory) then
+        self.inventory:OnKeyboard(dik, keyboard_action)
+      end
+			if self.CC:IsShown() then
+				self.CC:OnKeyboard(dik, keyboard_action)
+      end   
+  end
+end
+
+function RN_UILoadout:Close()
+	utils_obj.play_sound("interface\\inv_close")
+  
+  self:HideDialog()
+  self:Show(false)
+  Unregister_UI("RN_UILoadout")
+end
+
+ 

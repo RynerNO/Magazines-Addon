@@ -1,0 +1,72 @@
+
+main = rynerno_mag
+helper = rynerno_helper
+function weapon_eject_mag_condition(weapon)
+
+	if (weapon and IsWeapon(weapon) and (not IsMelee(weapon))) then
+		
+		
+		if(main.rn_weapon_data[weapon:id()]) then
+		
+			return game.translate_string("st_mag_eject_magazine")
+			
+		end
+		
+	end
+
+end
+
+function weapon_eject_mag_functor(weapon)
+
+	main.rn_unload_mag(weapon)
+
+end
+
+function mag_unload_precondition(mag)
+
+	if (mag and helper.isMagazine(mag:section()) and main.mags_data[mag:id()]) then
+
+			return game.translate_string("st_mag_unload_ammo")
+			
+
+		
+	end
+
+end
+
+function mag_unload_functor(mag)
+
+	main.UnloadBulletsFromMagazine(mag)
+
+end
+
+
+function mag_check_precondition(mag)
+
+	if (mag and helper.isMagazine(mag:section()) and main.mags_data[mag:id()] and main.mags_data[mag:id()].checked) then
+		
+			return game.translate_string("st_mag_check_ammo")
+			
+
+		
+	end
+
+end
+
+function mag_check_functor(mag)
+
+	main.rn_check_bullets(mag)
+
+end
+
+
+function add_to_loadout_functor(mag)
+
+		rynerno_loadout.transfer_from_inv(mag)
+
+end
+function add_to_loadout_precondition(mag)
+	if (mag and helper.isMagazine(mag:section()) and main.mags_data[mag:id()]) then
+		return game.translate_string("st_mag_loadout_add")
+	end
+end

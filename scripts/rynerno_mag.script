@@ -12,6 +12,27 @@ local DEFAULT_DELAY = 800 -- delay between bullet loads, without decreasing by r
 local HIDE_AMMO_COUNT = true -- hide ammo count after reload if weapon fired once
 local BULLETS_CHECK_DELAY = 1500
 
+
+
+
+-- Colors
+
+local clr_g  = utils_xml.get_color("d_green")
+local clr_y  = utils_xml.get_color("yellow")
+local clr_o  = utils_xml.get_color("d_orange")
+local clr_r  = utils_xml.get_color("d_red")
+
+local clr_b  = utils_xml.get_color("d_cyan")
+local clr_b1 = utils_xml.get_color("pda_blue")
+local clr_b2 = utils_xml.get_color("d_blue")
+local clr_p  = utils_xml.get_color("d_purple")
+
+local clr_w  = utils_xml.get_color("pda_white")
+
+local clr_1  = utils_xml.get_color("ui_gray_2")
+local clr_2  = utils_xml.get_color("ui_gray_1")
+
+-----------
 local helper = rynerno_helper
 local released_ammo_table = {}
 local player_skill = 1
@@ -38,6 +59,8 @@ local IGNORE_AMMO_SECTIONS = {
 }
 mags_data = {}
 rn_weapon_data = {}
+loadouts = {}
+
 local alife_mags_data = {}
 local hud_static = nil
 function on_game_start()
@@ -94,7 +117,7 @@ function hideHUD()
 end
 
 -- Called from ui_item.script line 572
-function build_desc_header(obj, sec, str, colors)
+function build_desc_header(obj, sec, str)
 	if(obj and rynerno_helper.isMagazine(obj:section())) then
 		local ammoCountTitle = gc('mag_ammo_loaded_count')
 		local mag_data = mags_data[obj:id()]
@@ -106,6 +129,7 @@ function build_desc_header(obj, sec, str, colors)
 	
 			local min = percents - (10 * percents / 100) - 1
 			local max = percents + (10 * percents / 100)
+			if(max > 100) then max = 100 end
 			if(min < 0) then min = 0 end
 			str = " \\n \\n" .. ammoCountTitle .. ": " .. math.floor(min) .. "-" ..  math.floor(max) .."%" .." \\n" 
 			if(mag_data) then
@@ -115,11 +139,11 @@ function build_desc_header(obj, sec, str, colors)
 					if(mag_data.ammo_list[i].count == 0) then return end
 					local ammo_translate_str = ini_sys:r_string_ex(mag_data.ammo_list[i].type,"inv_name_short")
 					local ammo_name = gc(ammo_translate_str)
-					str = str .. " \\n" .. colors.clr_o .. ammo_name .. colors.clr_2 ..": ".. colors.clr_r .. "?" .. colors.clr_2 .. " \\n"
+					str = str .. " \\n" .. clr_o .. ammo_name .. clr_2 ..": ".. clr_r .. "?" .. clr_2 .. " \\n"
 				end
 			end	
 		else
-			str = " \\n \\n" .. ammoCountTitle .. ": " .. colors.clr_g .. ammo_count  .. colors.clr_2 .. " / " .. colors.clr_g .. max_ammo_count .. colors.clr_2 .. " \\n" 
+			str = " \\n \\n" .. ammoCountTitle .. ": " .. clr_g .. ammo_count  .. clr_2 .. " / " .. clr_g .. max_ammo_count .. clr_2 .. " \\n" 
 			if(mag_data) then
 				local title = gc("mag_ammo_types_count")
 				str = str .. " \\n" .. title .. ":" .. " \\n"
@@ -128,7 +152,7 @@ function build_desc_header(obj, sec, str, colors)
 					local ammo_translate_str = ini_sys:r_string_ex(mag_data.ammo_list[i].type,"inv_name_short")
 					local ammo_name = gc(ammo_translate_str)
 					local ammo_count = mag_data.ammo_list[i].count
-					str = str .. " \\n" .. colors.clr_o .. ammo_name .. colors.clr_2 ..": ".. colors.clr_g .. ammo_count .. colors.clr_2 .. " \\n"
+					str = str .. " \\n" .. clr_o .. ammo_name .. clr_2 ..": ".. clr_g .. ammo_count .. clr_2 .. " \\n"
 				end
 			end	
 		end
@@ -356,7 +380,6 @@ function LoadBulletsIntoMagazine(ammo, mag)
 						else
 							helper.set_condition(mag, total_ammo, ini_sys:r_u32(mag:section(), "max_mag_size"))
 						end
-						
 						local ammo_box_size = ammo:ammo_get_count()
 						local new_box_size = ammo_box_size - 1
 					
@@ -488,6 +511,9 @@ end
 
 
 
+
+
+
 -- Function used to disable deffault reload
 
 
@@ -512,6 +538,7 @@ end
 
 function rn_sort_inventory()
 	local inventory = GetActorMenu()
+	if not (inventory:IsShown()) then return end
 	inventory:On_Sort(1,true)
 	inventory:On_Sort(1)
 end
@@ -551,13 +578,6 @@ function rn_set_ammo_weight_after_remove()
 	helper.log(dummy_total_weight)
 	dummy_obj:set_weight(dummy_total_weight)
 end
-
-
-
-
-
-
-
 
 -- CALLBACKS
 
@@ -654,9 +674,10 @@ local UI_t
 function on_key_press(key)
 	magazine_interaction = false
 	if(key == DIK_keys.DIK_HOME) then
-		helper.log('HOME PRESS')
-		UI_t = rynerno_loadout_ui.get_loadout_ui()
-	
+		helper.log('MODE:' .. lastMode)
+		if(lastMode == 0 or lastMode == 20 or lastMode == 1) then  
+			UI_t = rynerno_loadout_ui.get_loadout_ui()
+		end
 	end
 	local bind = dik_to_bind(key)
 	if (bind == key_bindings.kWPN_RELOAD) then
@@ -672,6 +693,7 @@ function save_state(m_data)
 	m_data.exp_to_next_lvl = exp_to_next_lvl
 	m_data.mags_data = mags_data
 	m_data.rn_weapon_data = rn_weapon_data 
+	m_data.loadouts = loadouts
 end
 
 function load_state(m_data)
@@ -680,6 +702,7 @@ function load_state(m_data)
 	exp_to_next_lvl = m_data.exp_to_next_lvl
 	mags_data = m_data.mags_data or {}
 	rn_weapon_data = m_data.rn_weapon_data or {}
+	loadouts = m_data.loadouts or {}
 
 	if(exp_to_next_lvl == nil) then
 		exp_to_next_lvl = exp_default_to_next_lvl * player_skill
@@ -706,10 +729,11 @@ function ActorMenu_on_mode_changed(mode, last_mode)
 			-- iventory closed
 			rn_remove_all_ammo()
 			updateHUD() 
+			
 		elseif(last_mode==2) then
-		-- trade closed
-		rn_remove_all_ammo()
-		updateHUD() 
+			-- trade closed
+			rn_remove_all_ammo()
+			updateHUD() 
 		elseif(last_mode==3) then
 		-- upgrade closed
 		rn_remove_all_ammo()
@@ -728,22 +752,28 @@ function ActorMenu_on_mode_changed(mode, last_mode)
 		-- trade opened
 		rn_return_all_ammo()
 		hideHUD()
+		
 	elseif(mode==3) then
 		-- upgrade opened
 		rn_return_all_ammo()
 		hideHUD()
+		
 	elseif(mode==4) then
 		-- dead body search opened
 		rn_return_all_ammo()
 		hideHUD()
+		
 	elseif(mode==10) then
 		-- dialog opened
 		rn_return_all_ammo()  
 		hideHUD()
+		
 	elseif(mode==11) then
 		-- dialog closed
 		rn_remove_all_ammo()
 		updateHUD()
+		
+		
 	end
 end
 

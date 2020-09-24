@@ -640,11 +640,10 @@ function UIWheelAmmo:Reset(obj)
 
 	-- Collect all ammo in inventory
 	empty_table(self.ammo_inv)
-	local weapon = db.actor:item_in_slot(db.actor:active_slot())
 	-- RynerNO Mags
-	if(rynerno_helper.isUseMag(weapon:section())) then 
+	if(rynerno_helper.isUseMag(obj:section())) then 
 		
-		self.ammo_inv = rynerno_mag.rn_ammo_wheel(weapon)
+		self.ammo_inv = rynerno_mag.rn_ammo_wheel(obj)
 		
 	else
 		local function itr(temp, itm)
@@ -655,8 +654,6 @@ function UIWheelAmmo:Reset(obj)
 		end
 		db.actor:iterate_inventory(itr, nil)
 	end
-	
-
 	-- Reset XML elements
 	self.extended:Show(#self.ammo_list > 9)
 	--self.box_r:Show(false)
@@ -734,19 +731,20 @@ end
 function UIWheelAmmo:OnAmmo(n)
 	local wpn = db.actor:active_item()
 	if wpn and (wpn:section() == self.section) and self.avail[n] then
-	-- RynerNO Mags
-	if(rynerno_helper.isUseMag(wpn:section())) then
-		local ammo_class = str_explode(ini_sys:r_string_ex(wpn:section(), "ammo_class"), ",")
-		local ammo_type = ammo_class[n]
-		rynerno_mag.rn_reload(ammo_type)
-	else
-		local ammo_type = wpn:get_ammo_type()
-		if (ammo_type ~= n - 1) then
-			wpn:unload_magazine(true)
-			wpn:set_ammo_type(n - 1) -- ammo type starts from 0
-			db.actor:reload_weapon()
+		
+		-- RynerNO Mags
+		if(rynerno_helper.isUseMag(wpn:section())) then
+			local ammo_class = str_explode(ini_sys:r_string_ex(wpn:section(), "ammo_class"), ",")
+			local ammo_type = ammo_class[n]
+			rynerno_mag.rn_reload(ammo_type)
+		else
+			local ammo_type = wpn:get_ammo_type()
+			if (ammo_type ~= n - 1) then
+				wpn:unload_magazine(true)
+				wpn:set_ammo_type(n - 1) -- ammo type starts from 0
+				db.actor:reload_weapon()
+			end
 		end
-	end
 	end
 
 	self:Close()
