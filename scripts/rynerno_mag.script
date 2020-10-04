@@ -747,11 +747,10 @@ function on_key_press(key)
 	
 	end
 	if(key == DIK_keys.DIK_HOME) then
-		helper.log('MODE:' .. lastMode)
 		local loadout = db.actor:item_in_slot(7)
 		if(not loadout) then return end
 		if(lastMode == 0 or lastMode == 20 or lastMode == 1) then  
-			UI_t = ld_ui.get_loadout_ui()
+			UI_t = ld_ui.get_loadout_ui(loadout)
 		end
 	end
 	local bind = dik_to_bind(key)
