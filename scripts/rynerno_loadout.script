@@ -37,14 +37,20 @@ function transfer_to_inv(mag)
   local loadout = db.actor:item_in_slot(7)
   if(loadout and mag and isExists(loadout:id())) then
     local id = loadout:id()
-    local weight = loadout:weight()
-    local mag_w = mag:weight()
-    weight = weight - mag_w
-    loadout:set_weight(weight)
+    local mag_weight = h.calcMagWeight(rynerno_mag.loadouts[id][mag:id()])
+    mag:set_weight(mag_weight)
+    -- Update inv weight stat
+    local se = alife_create_item(mag:section(), db.actor)
+    alife_release_id(se.id)
+    --
     rynerno_mag.mags_data[mag:id()] = rynerno_mag.loadouts[id][mag:id()] 
     rynerno_mag.loadouts[id][mag:id()]  = nil
     local l_gui = rynerno_loadout_ui.get_gui_inst()
-    if(l_gui and l_gui:IsShown()) then l_gui:Reset() end
+    if(l_gui and l_gui:IsShown()) then l_gui:Reset(loadout) end
+    local inv = GetActorMenu()
+    if(inv) then
+      inv:UpdateWeight()
+    end
   end
 end
 
@@ -54,17 +60,25 @@ function transfer_from_inv(mag)
   if(loadout and mag) then
     if not (rynerno_mag.mags_data[mag:id()]) then return end
     local id = loadout:id()
-    local weight = loadout:weight()
-    local mag_w = mag:weight()
-    weight = weight + mag_w
-    loadout:set_weight(weight)
+    
     if not(isExists(id)) then 
       rynerno_mag.loadouts[id] = {}
     end
+    mag:set_weight(0)
+    
     rynerno_mag.loadouts[id][mag:id()] = rynerno_mag.mags_data[mag:id()]
     rynerno_mag.mags_data[mag:id()] = nil
+    -- Update inv weight stat
+    local se = alife_create_item(mag:section(), db.actor)
+    alife_release_id(se.id)
+    --
     local l_gui = rynerno_loadout_ui.get_gui_inst()
-    if(l_gui and l_gui:IsShown()) then l_gui:Reset() end
+    if(l_gui and l_gui:IsShown()) then l_gui:Reset(loadout) end
+    local inv = GetActorMenu()
+    if(inv) then
+      inv:UpdateWeight()
+    end
+    
   end
 end
 
@@ -133,3 +147,5 @@ function getMag(lID, mID)
   end
   return nil
 end
+
+

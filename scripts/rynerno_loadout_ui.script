@@ -19,7 +19,7 @@ function get_gui_inst()
   end
   return GUI
 end
-function get_loadout_ui()
+function get_loadout_ui(obj)
   if (not GUI) then
 		GUI = RN_UILoadout()
 	end
@@ -31,7 +31,7 @@ function get_loadout_ui()
     GUI:ShowDialog(true)
     GUI:Show(true)
     if(inventory:IsShown()) then
-		  GUI:Reset()
+		  GUI:Reset(obj)
     end
     keybind_pass()
     
@@ -42,7 +42,7 @@ function get_loadout_ui()
     Register_UI("RN_UILoadout")
     _GUIs_keyfree["RN_UILoadout"] = true
     
-    GUI:Reset()
+    GUI:Reset(obj)
     return GUI
   end
   
@@ -64,7 +64,9 @@ function RN_UILoadout:__init() super()
   self:InitCallBacks()
   
 end
-
+function RN_UILoadout:GetCurrentId()
+    return self.loadout
+end
 function RN_UILoadout:__finalize()
 end
 function RN_UILoadout:On_CC_Hover(bag, idx)
@@ -114,7 +116,7 @@ function RN_UILoadout:InitCallBacks()
   self:AddCallback("btn_close", ui_events.BUTTON_CLICKED, self.Close, self)
 end
 
-function RN_UILoadout:Reset()
+function RN_UILoadout:Reset(obj)
   self.inventory = nil
   self.firstClick = false
   local inventory = GetActorMenu()
@@ -124,12 +126,13 @@ function RN_UILoadout:Reset()
   end
   
   self.highlight_mag = nil
-  local loadout = db.actor:item_in_slot(7)
-  if not (loadout) then
+
+  if not (obj) then
     self:Close()
     return
   end
-  local mags_table = rynerno_loadout.getMagsTable(loadout:id())
+  self.loadout = obj:id()
+  local mags_table = rynerno_loadout.getMagsTable(obj:id())
   self.CC:Reinit( mags_table )
   self.CC:Show(true)
   self:AllowMovement( true )

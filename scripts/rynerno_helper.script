@@ -193,3 +193,30 @@ function getMagTypes(sec)
 	end
 	return mag_types
 end
+
+
+function findAmmoBox(id, sec)
+	if not (sec) then return end
+	local new_ammo_box = nil
+	local function itr(a, item)
+		if(item and IsAmmo(item) and item:section() == sec and item:id() ~= id) then
+			new_ammo_box = item
+
+		end
+	end
+	db.actor:iterate_inventory(itr, true)
+	return new_ammo_box
+end
+
+
+function calcMagWeight(magData)
+	local weight = ini_sys:r_float_ex(magData.mag_type, "inv_weight")
+	for k,v in pairs(magData.ammo_list) do
+
+		local box_size = ini_sys:r_float_ex(v.type, "box_size")
+		local box_weight = ini_sys:r_float_ex(v.type, "inv_weight")
+		local bullet_weight = box_weight / box_size
+		weight = weight + bullet_weight * v.count
+	end
+	return weight
+end
