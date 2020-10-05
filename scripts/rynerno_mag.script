@@ -894,10 +894,11 @@ function actor_on_item_drop(obj)
 				local mag = rn_weapon_data[k]
 				mag.id = se_obj.id
 				rn_weapon_data[k] = mag
-				CreateTimeEvent(se_obj.id, "return_removed_mag", 200/ 1000, function() 
+				CreateTimeEvent(se_obj.id, "return_removed_mag", 300/ 1000, function() 
 					local g_obj = level.object_by_id(se_obj.id)
-					
+					helper.log(g_obj:section())
 					helper.set_condition(g_obj, mag.total_ammo, ini_sys:r_u32(g_obj:section(), "max_mag_size"))
+					return true
 				end)
 				
 				return
@@ -920,9 +921,10 @@ function actor_on_item_drop(obj)
 					loadouts[k][id] = nil
 			
 					
-					CreateTimeEvent(se_obj.id, "return_removed_mag", 200 / 1000, function() 
+					CreateTimeEvent(se_obj.id, "return_removed_mag", 300 / 1000, function() 
 						local g_obj = level.object_by_id(se_obj.id)
 						helper.log('time event')
+						helper.log(g_obj:section())
 						helper.set_condition(g_obj, mag.total_ammo, ini_sys:r_u32(g_obj:section(), "max_mag_size"))
 						return true
 					end)
