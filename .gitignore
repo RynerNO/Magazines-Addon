@@ -3,7 +3,7 @@ configs/items/items
 configs/items/weapons/**
 configs/text/eng/**
 configs/text/rus/**
-configs/misc
+
 axr_options.ltx
 cache_dbg.ltx
 localization.ltx
