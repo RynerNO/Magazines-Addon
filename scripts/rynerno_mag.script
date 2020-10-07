@@ -55,13 +55,11 @@ local IGNORE_AMMO_SECTIONS = {
 mags_data = {}
 rn_weapon_data = {}
 loadouts = {}
-local alife_created_mags = {}
-local bp_id
-local alife_mags_data = {}
+
+local temporary_removed_mags = {}
 local hud_static = nil
 function on_game_start()
 	RegisterScriptCallback("on_key_press", on_key_press)
-	RegisterScriptCallback("on_key_release",on_key_release)
 	RegisterScriptCallback("ActorMenu_on_item_drag_drop", on_item_drag_dropped)
 	RegisterScriptCallback("actor_on_first_update", actor_on_first_update )
 	RegisterScriptCallback("actor_on_weapon_fired", actor_on_weapon_fired)
@@ -121,8 +119,8 @@ function build_desc_header(obj, sec, str)
 		local mag_data = mags_data[obj:id()]
 		if  ( not (mag_data) and rynerno_loadout_ui.get_gui_inst():IsShown()) then 
 			local loadout_id = rynerno_loadout_ui.get_gui_inst().loadout
-			helper.log('tttewewse')
-			helper.log(loadout_id)
+	
+
 			if(loadout_id) then
 				mag_data = loadouts[loadout_id] and loadouts[loadout_id][obj:id()]
 			end
@@ -238,7 +236,10 @@ function rn_load_mag(weapon, mag)
 	helper.log('STATE WPN: ' .. state)
 	local weapon_in_hands = db.actor:item_in_slot(db.actor:active_slot())
 	-- I don't think there is need of double check
-	if(state == 0 or state == 1 and (weapon:id() == weapon_in_hands:id())) then
+	local inventory = GetActorMenu()
+	
+	if((state == 0 or state == 1) and (weapon:id() == weapon_in_hands:id()) and not (inventory:IsShown())) then
+		
 		weapon:switch_state(7)
 	else
 		rn_update_weapon(weapon, false)
@@ -716,10 +717,32 @@ function actor_on_hud_animation_end(item,section,motion,state,slot)
 end
 	
 function actor_on_item_take(item)
+	helper.log('ITEM TAKE:' .. item:section())
 	if(IsAmmo(item) and IGNORE_AMMO_SECTIONS[item:section()] ~= true and lastMode == 0) then
 		remove_ammo_pack(item)
 	end
-	
+	if(IsOutfit(item)) then
+		if(ld.isExists(item:id())) then
+			
+			for id,mag in pairs(loadouts[item:id()]) do
+				if not (temporary_removed_mags[id]) then return end
+				temporary_removed_mags[id] = nil
+				local se_obj = alife_create_item(mag.mag_type, db.actor)
+			
+				
+				mag.id = se_obj.id
+				loadouts[item:id()][id] = nil
+				loadouts[item:id()][se_obj.id] = mag
+				
+				CreateTimeEvent(se_obj.id, "return_removed_mag", 200 / 1000, function() 
+					local g_obj = level.object_by_id(se_obj.id)
+					helper.set_condition(g_obj, mag.total_ammo, ini_sys:r_u32(g_obj:section(), "max_mag_size"))
+					return true
+					
+				end)
+			end
+		end
+	end
 end
 
 function actor_item_to_ruck(item)
@@ -733,18 +756,19 @@ function actor_item_to_ruck(item)
 	
 	
 end
---[[ 
-TODO: Use it for something or remove
---]] 
-function on_key_release(key)
-	local bind = dik_to_bind(key)
-end
+
 local UI_t 
 function on_key_press(key)
 	magazine_interaction = false
-	
 	if(key == DIK_keys.DIK_LCONTROL) then
-	
+		local inventory = GetActorMenu()
+		helper.print_table(temporary_removed_mags)
+		if(inventory:IsShown()) then
+			helper.log("true inventory")
+		else
+			helper.log("false inventory")
+		end
+		
 	end
 	if(key == DIK_keys.DIK_HOME) then
 		local loadout = db.actor:item_in_slot(7)
@@ -768,7 +792,7 @@ function save_state(m_data)
 	m_data.mags_data = mags_data
 	m_data.rn_weapon_data = rn_weapon_data 
 	m_data.loadouts = loadouts
-	m_data.bp_id = bp_id
+	m_data.temporary_removed_mags = temporary_removed_mags
 end
 
 function load_state(m_data)
@@ -778,8 +802,7 @@ function load_state(m_data)
 	mags_data = m_data.mags_data or {}
 	rn_weapon_data = m_data.rn_weapon_data or {}
 	loadouts = m_data.loadouts or {}
-	bp_id = m_data.bp_id
-
+	temporary_removed_mags = m_data.temporary_removed_mags or {}
 	if(exp_to_next_lvl == nil) then
 		exp_to_next_lvl = exp_default_to_next_lvl * player_skill
 	end
@@ -882,8 +905,15 @@ end
 
 function actor_on_item_drop(obj)
 
-	
-	if(helper.isMagazine(obj:section())) then
+	if(IsOutfit(obj)) then
+		if(ld.isExists(obj:id())) then
+			for id,mag in pairs(loadouts[obj:id()]) do
+				temporary_removed_mags[id] = true
+				alife_release_id(id)
+			end
+		end
+	end
+	if(helper.isMagazine(obj:section()) and (not temporary_removed_mags[obj:id()])) then
 		for k,v in pairs(rn_weapon_data) do
 			-- It should be not possible.
 			if(v.id == obj:id()) then
@@ -894,7 +924,7 @@ function actor_on_item_drop(obj)
 				local mag = rn_weapon_data[k]
 				mag.id = se_obj.id
 				rn_weapon_data[k] = mag
-				CreateTimeEvent(se_obj.id, "return_removed_mag", 300/ 1000, function() 
+				CreateTimeEvent(se_obj.id, "return_removed_mag", 200/ 1000, function() 
 					local g_obj = level.object_by_id(se_obj.id)
 					helper.log(g_obj:section())
 					helper.set_condition(g_obj, mag.total_ammo, ini_sys:r_u32(g_obj:section(), "max_mag_size"))
@@ -921,7 +951,7 @@ function actor_on_item_drop(obj)
 					loadouts[k][id] = nil
 			
 					
-					CreateTimeEvent(se_obj.id, "return_removed_mag", 300 / 1000, function() 
+					CreateTimeEvent(se_obj.id, "return_removed_mag", 200 / 1000, function() 
 						local g_obj = level.object_by_id(se_obj.id)
 						helper.log('time event')
 						helper.log(g_obj:section())
