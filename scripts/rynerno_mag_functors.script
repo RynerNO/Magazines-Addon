@@ -61,7 +61,11 @@ end
 
 
 function add_to_loadout_functor(mag)
-
+		local inst = rynerno_loadout_ui.get_gui_inst()
+		if(inst:IsShown()) then
+			local loadout_obj = level.object_by_id(inst.loadout)
+			rynerno_loadout.transfer_from_inv(mag, loadout_obj)
+		end
 		rynerno_loadout.transfer_from_inv(mag)
 
 end

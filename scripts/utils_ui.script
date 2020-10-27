@@ -1806,7 +1806,21 @@ function UICellContainer:FindSimilar(obj, sec)
 	if self.disable_stack then
 		return false
 	end
+	-- RynerNO Disable Stack for mags
+	if(rynerno_helper.isMagazine(sec)) then	
+		for idx,ci in pairs(self.cell) do
+			if (ci.section == sec) then
+					local cond = obj:condition()
+					local obj_2 = ci.ID and level.object_by_id(ci.ID)
+					if obj_2 and obj_2:condition() == 0 then
+						return ci
+					end		
+				end		
+		end
 	
+		return false
+	
+	end
 	if self.showcase or self.stack_all then
 		return self:GetCell_SEC(sec)
 	end
@@ -1814,7 +1828,7 @@ function UICellContainer:FindSimilar(obj, sec)
 	local sec = obj:section()
 	
 	-- Ignore search if item isn't meant to stack
-	if SYS_GetParam(1,sec,"dont_stack") then
+ 	if SYS_GetParam(1,sec,"dont_stack") then
 		return false
 	end
 	

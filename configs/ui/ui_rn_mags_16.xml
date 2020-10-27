@@ -10,7 +10,9 @@
 			<texture>ui_inGame2_big_inventory_button</texture>
 		</btn_close>
 		
-
+		<cap x="265" y="70" width="55" height="37">
+        	<text font="graffiti22" r="140" g="140" b="140" complex_mode="1" align="l" vert_align="t"/>
+  		</cap>
 
 		
 		<cells x="70" y="73" width="250" height="170"/>

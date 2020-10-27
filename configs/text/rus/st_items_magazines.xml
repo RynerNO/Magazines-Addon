@@ -9,12 +9,20 @@ LOADOUT
 	<string id="ui_inv_close">
 		<text>Закрыть</text>
 	</string>
+	<string id="st_loadout_capacity">
+		<text>Ячейки:</text>
+	</string>
+	
 <!--
 COMMON
 -->
+<string id="st_mag_ld_capacity">
+		<text>Требуется ячеек в разгрузке</text>
+	</string>
 	<string id="st_mag_weapon_jammed">
 		<text>оружие заклинило</text>
 	</string>
+	
 	<string id="st_mag_eject_magazine">
 		<text>извлечь магазин</text>
 	</string>

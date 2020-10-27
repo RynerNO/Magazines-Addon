@@ -21,7 +21,7 @@ local BULLETS_CHECK_DELAY = 1500
 local clr_g  = utils_xml.get_color("d_green")
 local clr_o  = utils_xml.get_color("d_orange")
 local clr_r  = utils_xml.get_color("d_red")
-
+local clr_y = utils_xml.get_color("yellow")
 
 local clr_2  = utils_xml.get_color("ui_gray_1")
 
@@ -117,6 +117,7 @@ function build_desc_header(obj, sec, str)
 	if(obj and rynerno_helper.isMagazine(obj:section())) then
 		local ammoCountTitle = gc('mag_ammo_loaded_count')
 		local mag_data = mags_data[obj:id()]
+		str =  clr_y .. gc("st_mag_ld_capacity") .. clr_2.. ": " .. clr_g .. ld.get_required_mag_cap(obj:section()) .. clr_2
 		if  ( not (mag_data) and rynerno_loadout_ui.get_gui_inst():IsShown()) then 
 			local loadout_id = rynerno_loadout_ui.get_gui_inst().loadout
 	
@@ -128,6 +129,7 @@ function build_desc_header(obj, sec, str)
 		local ammo_count = (mag_data and mag_data.total_ammo) or 0
 		local max_ammo_count = ini_sys:r_u32(obj:section(), "max_mag_size")
 		-- If mag data checked then display only percents
+		
 		if(mag_data and mag_data.checked and HIDE_AMMO_COUNT) then
 			local percents = ammo_count / max_ammo_count * 100
 	
@@ -135,7 +137,8 @@ function build_desc_header(obj, sec, str)
 			local max = percents + (10 * percents / 100)
 			if(max > 100) then max = 100 end
 			if(min < 0) then min = 0 end
-			str = " \\n \\n" .. ammoCountTitle .. ": " .. math.floor(min) .. "-" ..  math.floor(max) .."%" .." \\n" 
+			
+			str = str .. " \\n \\n" .. ammoCountTitle .. ": " .. math.floor(min) .. "-" ..  math.floor(max) .."%" .." \\n" 
 			if(mag_data) then
 				local title = gc("mag_ammo_types_count")
 				str = str .. " \\n" .. title .. ":" .. " \\n"
@@ -147,7 +150,7 @@ function build_desc_header(obj, sec, str)
 				end
 			end	
 		else
-			str = " \\n \\n" .. ammoCountTitle .. ": " .. clr_g .. ammo_count  .. clr_2 .. " / " .. clr_g .. max_ammo_count .. clr_2 .. " \\n" 
+			str = str ..  " \\n \\n" .. ammoCountTitle .. ": " .. clr_g .. ammo_count  .. clr_2 .. " / " .. clr_g .. max_ammo_count .. clr_2 .. " \\n" 
 			if(mag_data) then
 				local title = gc("mag_ammo_types_count")
 				str = str .. " \\n" .. title .. ":" .. " \\n"
@@ -263,8 +266,9 @@ function rn_unload_mag(weapon)
 	
 	if(obj) then
 		local mag_weight = helper.calcMagWeight(loaded_mag_data)
-    obj:set_weight(mag_weight)
+    	obj:set_weight(mag_weight)
 		helper.set_condition(obj, loaded_mag_data.total_ammo, ini_sys:r_u32(obj:section(), "max_mag_size"))
+		rn_sort_inventory()
 	end
 
 	rn_weapon_data[weapon:id()] = nil
@@ -440,8 +444,8 @@ function LoadBulletsIntoMagazine(ammo, mag)
 						else
 							ammo:ammo_set_count(new_box_size)
 						end
-						
-						 
+						-- Update Inv
+						rn_sort_inventory()
 						if(magazine_interaction) then
 							-- level.add_call(function() 
 							-- 	local difference = time_global() - last_load_time
@@ -504,7 +508,7 @@ function UnloadBulletsFromMagazine(mag)
 		if(ammo_data.count == 0) then
 			helper.log('COUNT 0')
 			mags_data[mag:id()].ammo_list = helper.remove_last(mags_data[mag:id()].ammo_list)
-			ammo_box = nil
+			
 		else
 			mags_data[mag:id()].ammo_list = helper.replace_last(mags_data[mag:id()].ammo_list, ammo_data)
 		end
@@ -518,11 +522,15 @@ function UnloadBulletsFromMagazine(mag)
 		local checked  = (mags_data[mag:id()] and mags_data[mag:id()].checked) or false
 		if(checked) then
 			mag:set_condition(0.2)
+			if(ammo_data.count == 0 and mags_data[mag:id()].total_ammo == 0) then
+				mag:set_condition(0)
+			end
 		else
 			helper.set_condition(mag, mags_data[mag:id()].total_ammo, ini_sys:r_u32(mag:section(), "max_mag_size"))
 		end
 		xr_sound.set_sound_play(AC_ID,"unload_bullet_from_magazine")
-
+		-- Update Inv
+		rn_sort_inventory()
 		CreateTimeEvent(time_global(), "UnloadBulletsFromMagazine", delay / 1000, unload_bullet)
 
 
@@ -612,8 +620,7 @@ end
 function rn_sort_inventory()
 	local inventory = GetActorMenu()
 	if not (inventory:IsShown()) then return end
-	inventory:On_Sort(1,true)
-	inventory:On_Sort(1)
+	inventory:IMode_ResetInventories()
 end
 
 function rn_remove_all_ammo() 
@@ -761,6 +768,8 @@ local UI_t
 function on_key_press(key)
 	magazine_interaction = false
 	if(key == DIK_keys.DIK_LCONTROL) then
+		local loadout = db.actor:item_in_slot(7)
+		helper.log(ld.get_available_cap(loadout))
 		local inventory = GetActorMenu()
 		helper.print_table(temporary_removed_mags)
 		if(inventory:IsShown()) then

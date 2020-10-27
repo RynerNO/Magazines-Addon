@@ -32,9 +32,9 @@ function remove_mag(loadout, mag)
  
 end
 
-function transfer_to_inv(mag)
+function transfer_to_inv(mag, obj)
   h.log('tranfer_to_inv')
-  local loadout = db.actor:item_in_slot(7)
+  local loadout = obj or db.actor:item_in_slot(7)
   if(loadout and mag and isExists(loadout:id())) then
     local id = loadout:id()
     local mag_weight = h.calcMagWeight(rynerno_mag.loadouts[id][mag:id()])
@@ -54,9 +54,9 @@ function transfer_to_inv(mag)
   end
 end
 
-function transfer_from_inv(mag)
+function transfer_from_inv(mag, obj)
   h.log('tranfer_from_inv')
-  local loadout = db.actor:item_in_slot(7)
+  local loadout = obj or db.actor:item_in_slot(7)
   if(loadout and mag) then
     if not (rynerno_mag.mags_data[mag:id()]) then return end
     local id = loadout:id()
@@ -64,6 +64,8 @@ function transfer_from_inv(mag)
     if not(isExists(id)) then 
       rynerno_mag.loadouts[id] = {}
     end
+
+    if(get_available_cap(loadout) <= 0) then return end
     mag:set_weight(0)
     
     rynerno_mag.loadouts[id][mag:id()] = rynerno_mag.mags_data[mag:id()]

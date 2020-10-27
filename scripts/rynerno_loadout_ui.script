@@ -11,7 +11,7 @@ function keybind_pass()
 	return false
 end
 GUI = nil 
-local clr_r,clr_2,clr_d,clr_w,clr_o
+local clr_r,clr_2,clr_d,clr_w,clr_o,clr_g
 local w_unit = game.translate_string("st_kg")
 function get_gui_inst()
   if (not GUI) then
@@ -59,6 +59,7 @@ function RN_UILoadout:__init() super()
 	clr_d = utils_xml.get_color("ui_gray_2")
 	clr_w = utils_xml.get_color("pda_white")
   clr_o = utils_xml.get_color("d_orange")
+  clr_g = utils_xml.get_color("d_green")
   self:InitControls()
  
   self:InitCallBacks()
@@ -98,6 +99,7 @@ function RN_UILoadout:InitControls()
   xml:ParseFile("ui_rn_mags.xml")
   self.dialog	= xml:InitStatic("loadout", self)
   self.background = xml:InitStatic("loadout:background", self.dialog)
+  self.cap = xml:InitTextWnd("loadout:cap", self.dialog)
   self.inventory = nil
 
   self.hint_wnd = xml:InitFrame("hint_wnd:background", self)
@@ -135,6 +137,21 @@ function RN_UILoadout:Reset(obj)
   end
   self.loadout = obj:id()
   local mags_table = rynerno_loadout.getMagsTable(obj:id())
+  local avaliable_cap = rynerno_loadout.get_available_cap(obj)
+  local max_cap = rynerno_loadout.get_loadout_capacity(obj:section())
+  local percents = avaliable_cap / max_cap * 100
+  local color = clr_g
+  if(percents > 70) then
+    color = clr_g
+  elseif(percents < 70 and percents > 20) then
+    color = clr_o
+  elseif (percents < 20) then
+    color = clr_r
+  end
+
+  local str = gc('st_loadout_capacity') .. " ".. color .. avaliable_cap .. clr_2 ..  " / " .. max_cap 
+  self.cap:SetText(str)
+	self.cap:AdjustHeightToText()
   self.CC:Reinit( mags_table )
   self.CC:Show(true)
   self:AllowMovement( true )
@@ -144,23 +161,27 @@ function RN_UILoadout:On_CC_Mouse1_DB(bag, idx)
   if(bag == "actor_bag") then
     local cell = self.inventory.CC["actor_bag"].cell[idx]
     local mag_obj = level.object_by_id(cell.ID)
-    if (mag_obj) then
-      rynerno_loadout.transfer_from_inv(mag_obj)
+    local loadout_obj = level.object_by_id(self.loadout)
+    if (mag_obj and loadout_obj) then
+      rynerno_loadout.transfer_from_inv(mag_obj, loadout_obj)
     end
   elseif(bag == "RN_UILoadout_bag") then
       local cell = self.CC.cell[idx]
       local mag_obj = level.object_by_id(cell.ID)
-      if (mag_obj) then
-        rynerno_loadout.transfer_to_inv(mag_obj)
+      local loadout_obj = level.object_by_id(self.loadout)
+      if (mag_obj and loadout_obj) then
+        rynerno_loadout.transfer_to_inv(mag_obj, loadout_obj)
       end
   end
 
 end
 function RN_UILoadout:On_Mouse1_DB_inv(id)
   local m_obj = level.object_by_id(id)
-  if(m_obj and helper.isMagazine(m_obj:section())) then
+  local loadout_obj = level.object_by_id(self.loadout)
+
+  if(m_obj and loadout_obj and helper.isMagazine(m_obj:section())) then
     
-    rynerno_loadout.transfer_from_inv(m_obj)
+    rynerno_loadout.transfer_from_inv(m_obj, loadout_obj)
   end
 end
 function RN_UILoadout:Update()
@@ -204,9 +225,6 @@ end
 
 -- Callback utils_ui
 
-function RN_UILoadout:On_CC_Mouse1(ID, idx) 
-  self:MagClicked()
-end
 function RN_UILoadout:On_CC_Mouse2(bag, idx)
   local cell = self.CC.cell[idx]
   local obj
@@ -220,14 +238,12 @@ function RN_UILoadout:On_CC_Mouse2(bag, idx)
 end
 
 function RN_UILoadout:transfer_to_inv(mag)
-
-
-  rynerno_loadout.transfer_to_inv(mag)
-
+  local loadout_obj = level.object_by_id(self.loadout)
+  if(loadout_obj) then
+    rynerno_loadout.transfer_to_inv(mag, loadout_obj)
+  end
 end
-function RN_UILoadout:MagClicked()
-  helper.log("Clicked")
-end
+
 
 
 

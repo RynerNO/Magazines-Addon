@@ -8,9 +8,15 @@ LOADOUT
 	<string id="ui_inv_close">
 		<text>Close</text>
 	</string>
+	<string id="st_loadout_capacity">
+		<text>Cells:</text>
+	</string>
 <!--
 COMMON
 -->
+	<string id="st_mag_ld_capacity">
+		<text>Required cells in loadout</text>
+	</string>
 	<string id="st_mag_weapon_jammed">
 		<text>Weapon jammed</text>
 	</string>
