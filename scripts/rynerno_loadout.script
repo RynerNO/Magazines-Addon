@@ -14,21 +14,35 @@ local loadout_capacity_levels = {small = 4, medium = 6, large = 8}
 local cache_loadout_cap = {}
 local cache_mag_cap = {}
 local h = rynerno_helper
+local main = rynerno_mag
 function add_mag(loadout, mag)
-  if not (loadout and h.isMagazine(mag:section())) then return end
-  local mag_required_cap = get_required_mag_cap(mag:section())
+  if not (loadout and h.isMagazine(mag:section())) then return false end
+  if not (main.mags_data[mag:id()]) then return false end
+  local id = loadout:id()
+  if not(isExists(id)) then 
+    main.loadouts[id] = {}
+  end
   local avaliable_cap = get_available_cap(loadout)
-  if(mag_required_cap > avaliable_cap) then return end
-  local mag_data = rynerno_mag.mags_data[mag:id()]
-  rynerno_mag.loadouts[loadout:id()][mag:id()] = mag_data
- 
+  if(avaliable_cap <= 0) then return false end
+  local mag_required_cap = get_required_mag_cap(mag:section())
+  
+  if(mag_required_cap > avaliable_cap) then return false end
+  mag:set_weight(0)
+    
+  main.loadouts[id][mag:id()] = main.mags_data[mag:id()]
+  main.mags_data[mag:id()] = nil
+  -- Update inv weight stat
+  local se = alife_create_item(mag:section(), db.actor)
+  alife_release_id(se.id)
+  --
+  return true
 end
 
 
 function remove_mag(loadout, mag)
   if not (loadout and h.isMagazine(mag:section())) then return end
   
-  rynerno_mag.loadouts[loadout:id()][mag:id()] = nil
+  main.loadouts[loadout:id()][mag:id()] = nil
  
 end
 
@@ -37,19 +51,20 @@ function transfer_to_inv(mag, obj)
   local loadout = obj or db.actor:item_in_slot(7)
   if(loadout and mag and isExists(loadout:id())) then
     local id = loadout:id()
-    local mag_weight = h.calcMagWeight(rynerno_mag.loadouts[id][mag:id()])
+    local mag_weight = h.calcMagWeight(main.loadouts[id][mag:id()])
     mag:set_weight(mag_weight)
     -- Update inv weight stat
     local se = alife_create_item(mag:section(), db.actor)
     alife_release_id(se.id)
     --
-    rynerno_mag.mags_data[mag:id()] = rynerno_mag.loadouts[id][mag:id()] 
-    rynerno_mag.loadouts[id][mag:id()]  = nil
+    main.mags_data[mag:id()] = main.loadouts[id][mag:id()] 
+    main.loadouts[id][mag:id()]  = nil
     local l_gui = rynerno_loadout_ui.get_gui_inst()
     if(l_gui and l_gui:IsShown()) then l_gui:Reset(loadout) end
     local inv = GetActorMenu()
     if(inv) then
       inv:UpdateWeight()
+      main.rn_sort_inventory()
     end
   end
 end
@@ -57,31 +72,16 @@ end
 function transfer_from_inv(mag, obj)
   h.log('tranfer_from_inv')
   local loadout = obj or db.actor:item_in_slot(7)
-  if(loadout and mag) then
-    if not (rynerno_mag.mags_data[mag:id()]) then return end
-    local id = loadout:id()
+  if not (add_mag(loadout, mag)) then return false end
     
-    if not(isExists(id)) then 
-      rynerno_mag.loadouts[id] = {}
-    end
+  local l_gui = rynerno_loadout_ui.get_gui_inst()
+  if(l_gui and l_gui:IsShown()) then l_gui:Reset(loadout) end
+  local inv = GetActorMenu()
+  if(inv) then
+    inv:UpdateWeight()
+    main.rn_sort_inventory()
+  end   
 
-    if(get_available_cap(loadout) <= 0) then return end
-    mag:set_weight(0)
-    
-    rynerno_mag.loadouts[id][mag:id()] = rynerno_mag.mags_data[mag:id()]
-    rynerno_mag.mags_data[mag:id()] = nil
-    -- Update inv weight stat
-    local se = alife_create_item(mag:section(), db.actor)
-    alife_release_id(se.id)
-    --
-    local l_gui = rynerno_loadout_ui.get_gui_inst()
-    if(l_gui and l_gui:IsShown()) then l_gui:Reset(loadout) end
-    local inv = GetActorMenu()
-    if(inv) then
-      inv:UpdateWeight()
-    end
-    
-  end
 end
 
 -- Function to get max slots in loadout
@@ -91,7 +91,7 @@ end
 function get_available_cap(obj)
   local avaliable_cap = get_loadout_capacity(obj:section()) 
   if (isExists(obj:id())) then
-    for k,v in pairs(rynerno_mag.loadouts[obj:id()]) do
+    for k,v in pairs(main.loadouts[obj:id()]) do
       avaliable_cap = avaliable_cap - get_required_mag_cap(v.mag_type)
     end
   end
@@ -125,7 +125,7 @@ function get_loadout_capacity(sec)
 end
 
 function isExists(id) 
-  if(rynerno_mag.loadouts[id]) then return true end
+  if(main.loadouts[id]) then return true end
   return false
 end
 
@@ -134,7 +134,7 @@ end
 
 function getMagsTable(id)
   local t = {}
-  local mags_list = rynerno_mag.loadouts[id] or {}
+  local mags_list = main.loadouts[id] or {}
 	for k,v in pairs(mags_list) do
 		local obj = level.object_by_id(k)
 		t[#t + 1] = obj
@@ -144,7 +144,7 @@ end
 
 function getMag(lID, mID)
   if(isExists(lID)) then
-    local mag = rynerno_mag.loadouts[lID][mID]
+    local mag = main.loadouts[lID][mID]
     return mag
   end
   return nil

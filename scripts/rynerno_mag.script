@@ -72,7 +72,12 @@ function on_game_start()
 	RegisterScriptCallback("actor_on_item_drop", actor_on_item_drop)
 	RegisterScriptCallback("load_state",load_state)
 	RegisterScriptCallback("save_state",save_state)
-	
+	AddUniqueCall(loop)
+end
+function loop() 
+	if(db.actor) then
+		checkWeaponInHands()
+	end
 end
 
 function updateHUD() 
@@ -269,30 +274,36 @@ function rn_unload_mag(weapon)
     	obj:set_weight(mag_weight)
 		helper.set_condition(obj, loaded_mag_data.total_ammo, ini_sys:r_u32(obj:section(), "max_mag_size"))
 		rn_sort_inventory()
+	else
+		return
 	end
 
 	rn_weapon_data[weapon:id()] = nil
 	weapon:unload_magazine(false)
-	if(loaded_mag_data.total_ammo ~= 0 and lastMode == 1) then
+	local inventory = GetActorMenu()
+	if(loaded_mag_data.total_ammo ~= 0 and inventory:IsShown()) then
 		mags_data[loaded_mag_data.id] = loaded_mag_data
 		return
-	elseif(loaded_mag_data.total_ammo == 0 and lastMode == 1) then
+	elseif(loaded_mag_data.total_ammo == 0 and inventory:IsShown()) then
 		return
+	else
+		mags_data[loaded_mag_data.id] = loaded_mag_data
 	end
+	rn_sort_inventory()
 	local loadout = db.actor:item_in_slot(7)
 	if not (loadout) then
 		db.actor:drop_item(obj)
-		mags_data[loaded_mag_data.id] = loaded_mag_data
+		if(loaded_mag_data.total_ammo == 0) then
+			mags_data[loaded_mag_data.id] = nil
+		end
+		return
 	end
-	local avaliable_slots = ld.get_available_cap(loadout)
-	local reg_slots = ld.get_required_mag_cap(loaded_mag_data.mag_type)
-	avaliable_slots = avaliable_slots - reg_slots
-	if(avaliable_slots <  0) then
+	
+	local status = ld.add_mag(loadout, obj)
+	if not (status) then
 		db.actor:drop_item(obj)
-		mags_data[loaded_mag_data.id] = loaded_mag_data
-	else
-		loadouts[loadout:id()][loaded_mag_data.id] = loaded_mag_data
 	end
+	
 end
 
 function rn_check_bullets(mag)
@@ -591,14 +602,31 @@ function rn_ammo_wheel(wpn)
 end
 
 
-
-
-
+local ammoRemoved = false
+function checkWeaponInHands()
+	
+	local inv = GetActorMenu()
+    if(inv:IsShown()) then return end
+	local weapon = db.actor:item_in_slot(db.actor:active_slot())
+	if(weapon and helper.isUseMag(weapon:section())) then
+		if(ammoRemoved) then return end
+		helper.log('remove all ammo')
+		rn_remove_all_ammo()
+		ammoRemoved = true
+		
+	elseif(weapon and not helper.isUseMag(weapon:section())) then
+		if(not ammoRemoved ) then return end
+			helper.log('return all ammo')
+			rn_return_all_ammo()
+			ammoRemoved = false	
+	end
+end
 
 -- Function used to disable deffault reload
 
 
 function rn_return_all_ammo()
+	
 	if(released_ammo_table[1] ~= nil) then
 		for k,v in pairs(released_ammo_table) do
 			create_ammo(v.type, db.actor:position(), db.actor:level_vertex_id(), db.actor:game_vertex_id(), AC_ID, v.count)	
@@ -606,8 +634,7 @@ function rn_return_all_ammo()
 		end
 		rn_unset_ammo_weight_after_remove()
 		released_ammo_table = {}
-		
-
+		ammoRemoved = false	
 		-- Without this ammo will not be sorted
 		local time = time_global()
 		level.add_call(function() 
@@ -629,14 +656,12 @@ function rn_remove_all_ammo()
 	end
 	-- Search for ammo and remove
 	db.actor:inventory_for_each(function (item)
-				if(IGNORE_AMMO_SECTIONS[item:section()] ~= nil) then 
-						helper.log(item:section())
-				end
-				if(IsAmmo(item) and IGNORE_AMMO_SECTIONS[item:section()] == nil) then 
+				if(IsAmmo(item) and not(helper.isMagazine(item:section()))) then 
 				
 					remove_ammo_pack(item)
 				end
 	end)
+	ammoRemoved = true
 	helper.log('released_ammo ---------------------------')
 end
 
@@ -662,12 +687,12 @@ end
 -- CALLBACKS
 
 function on_item_focus_lost(item)
-	if not (item and IsWeapon(item) and rn_weapon_data[item:id()]) then return end
+	if not (item and helper.isUseMag(item:section() and rn_weapon_data[item:id()])) then return end
 	rn_update_weapon(item, true)
 end
 function on_item_focus_receive(item)
 	-- Not show ulnoad button
-	if not (item and IsWeapon(item) and rn_weapon_data[item:id()]) then return end
+	if not (item and helper.isUseMag(item:section())) then return end
 	item:unload_magazine(false)
 	
 end
@@ -713,7 +738,6 @@ function actor_on_hud_animation_end(item,section,motion,state,slot)
 	helper.log("STATE: " .. state)
 	if(state ~= 7) then return end
 	-- Check if item can use mags
-	item:switch_state(0)
 	if(helper.isUseMag(item:section()) == false) then
 		helper.log('this weapon is not valid for use mags')
 		return
@@ -725,7 +749,8 @@ end
 	
 function actor_on_item_take(item)
 	helper.log('ITEM TAKE:' .. item:section())
-	if(IsAmmo(item) and IGNORE_AMMO_SECTIONS[item:section()] ~= true and lastMode == 0) then
+	local weapon = db.actor:item_in_slot(db.actor:active_slot())
+	if(IsAmmo(item) and helper.isMagazine(item:section()) ~= true and weapon and helper.isUseMag(weapon:section()) and lastMode == 0) then
 		remove_ammo_pack(item)
 	end
 	if(IsOutfit(item)) then
@@ -824,7 +849,6 @@ function actor_on_first_update()
 	helper.log('actor update')
 
 	if(db.actor ~= nil) then
-		rn_remove_all_ammo()
 		updateHUD()
 	end
 	lastMode = 0
@@ -846,7 +870,7 @@ function ActorMenu_on_mode_changed(mode, last_mode)
 			updateHUD() 
 		elseif(last_mode==3) then
 		-- upgrade closed
-		rn_remove_all_ammo()
+		rn_remove_all_ammo()	
 		updateHUD() 
 		elseif(last_mode==4) then
 		-- dead body search closed
@@ -880,9 +904,8 @@ function ActorMenu_on_mode_changed(mode, last_mode)
 		
 	elseif(mode==11) then
 		-- dialog closed
-		rn_remove_all_ammo()
 		updateHUD()
-		
+		rn_remove_all_ammo()
 		
 	end
 end
