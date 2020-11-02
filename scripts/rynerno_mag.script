@@ -227,6 +227,10 @@ function rn_load_mag(weapon, mag)
 	if not (mag) then return end
 	if(not weapon or IsMelee(weapon) or not IsWeapon(weapon)) then return end
 	if (rn_weapon_data[weapon:id()] ~= nil) then return end
+	local mag_types = helper.getMagTypes(weapon:section())
+	if(helper.indexOf(mag_types, mag.mag_type) == -1) then 
+		helper.log('mag type == -1')
+		return end
 	local loadout = db.actor:item_in_slot(7)
 	if ((mags_data[mag.id] and mags_data[mag.id].total_ammo ~= 0)) then 
 			-- Add mag data to weapon data
@@ -283,13 +287,15 @@ function rn_unload_mag(weapon)
 	local inventory = GetActorMenu()
 	if(loaded_mag_data.total_ammo ~= 0 and inventory:IsShown()) then
 		mags_data[loaded_mag_data.id] = loaded_mag_data
+		rn_sort_inventory()
 		return
 	elseif(loaded_mag_data.total_ammo == 0 and inventory:IsShown()) then
+		rn_sort_inventory()
 		return
 	else
 		mags_data[loaded_mag_data.id] = loaded_mag_data
 	end
-	rn_sort_inventory()
+	
 	local loadout = db.actor:item_in_slot(7)
 	if not (loadout) then
 		db.actor:drop_item(obj)
@@ -687,7 +693,7 @@ end
 -- CALLBACKS
 
 function on_item_focus_lost(item)
-	if not (item and helper.isUseMag(item:section() and rn_weapon_data[item:id()])) then return end
+	if not (item and helper.isUseMag(item:section()) and rn_weapon_data[item:id()]) then return end
 	rn_update_weapon(item, true)
 end
 function on_item_focus_receive(item)

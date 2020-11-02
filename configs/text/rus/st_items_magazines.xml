@@ -662,11 +662,11 @@ Rifles
 	</string>
 
 	<string id="st_mag_ak74_5.45x39">
-		<text>Стандартный магазин для AK74 калибр 5.45x39</text>
+		<text>Стандартный магазин для AK калибр 5.45x39</text>
 	</string>
 	<string id="st_mag_ak74_5.45x39_descr">
 		<text>
-		Стандартный магазин для AK74 калибр 5.45x39.
+		Стандартный магазин для AK калибр 5.45x39.
 		</text>
 	</string>
 	
