@@ -55,7 +55,7 @@ local IGNORE_AMMO_SECTIONS = {
 mags_data = {}
 rn_weapon_data = {}
 loadouts = {}
-
+grenade_mode_list = {}
 local temporary_removed_mags = {}
 local hud_static = nil
 function on_game_start()
@@ -177,6 +177,8 @@ end
 
 
 function rn_reload(ammo_type)
+		local inv = GetActorMenu()
+		if(inv:IsShown()) then return end
 		-- Checking if weapon is valid for using mags
 		local weapon = db.actor:item_in_slot(db.actor:active_slot())
 		if(not weapon) then
@@ -188,7 +190,7 @@ function rn_reload(ammo_type)
 			helper.log('this weapon is not valid for use mags')
 			return
 		end
-		
+		if(grenade_mode_list[weapon:id()]) then return end
 		-- Check if there is valid mag for than weapon
 		local loadout = db.actor:item_in_slot(7)
 		if not (loadout and ld.isExists(loadout:id())) then return end
@@ -226,6 +228,7 @@ end
 function rn_load_mag(weapon, mag) 
 	if not (mag) then return end
 	if(not weapon or IsMelee(weapon) or not IsWeapon(weapon)) then return end
+	if(grenade_mode_list[weapon:id()]) then return end
 	if (rn_weapon_data[weapon:id()] ~= nil) then return end
 	local mag_types = helper.getMagTypes(weapon:section())
 	if(helper.indexOf(mag_types, mag.mag_type) == -1) then 
@@ -592,11 +595,12 @@ end
 function rn_ammo_wheel(wpn)
 	local ammo_inv = {}
 	local loadout = db.actor:item_in_slot(7)
-	local mag_types = getMagTypes(wpn:section())
+	local mag_types = helper.getMagTypes(wpn:section())
 
 	if not (loadout and ld.isExists(loadout:id())) then return ammo_inv end
 	for k,v in pairs(loadouts[loadout:id()]) do
-		if(helper.indexOf(mag_types, v.type) ~= -1) then
+		helper.log(v)
+		if(helper.indexOf(mag_types, v.mag_type) ~= -1) then
 			local last_ammo = helper.last_item(v.ammo_list)
 			if(last_ammo.count <= 0) then return end
 
@@ -610,17 +614,20 @@ end
 
 local ammoRemoved = false
 function checkWeaponInHands()
-	
 	local inv = GetActorMenu()
     if(inv:IsShown()) then return end
 	local weapon = db.actor:item_in_slot(db.actor:active_slot())
-	if(weapon and helper.isUseMag(weapon:section())) then
+	if not (weapon) then return end
+	if not ((weapon:weapon_grenadelauncher_status() == 2) and weapon:weapon_is_grenadelauncher()) then
+		grenade_mode_list[weapon:id()] = false
+	end
+	if(helper.isUseMag(weapon:section())) then
 		if(ammoRemoved) then return end
 		helper.log('remove all ammo')
 		rn_remove_all_ammo()
 		ammoRemoved = true
 		
-	elseif(weapon and not helper.isUseMag(weapon:section())) then
+	else
 		if(not ammoRemoved ) then return end
 			helper.log('return all ammo')
 			rn_return_all_ammo()
@@ -711,6 +718,7 @@ function actor_on_weapon_fired(obj, weapon)
 	-- Check if weapon is in mags_data
 	if (rn_weapon_data[weapon:id()] == nil) then return end
 	-- Decrease by 1 ammo_count in data or remove ammo type if it's 0
+	if(grenade_mode_list[weapon:id()]) then return end
 	if(rn_weapon_data[weapon:id()].total_ammo == 0) then
 	
 		return
@@ -736,13 +744,23 @@ function actor_on_hud_animation_end(item,section,motion,state,slot)
 	-- Check for reload state
 	-- state 1 - weapon in hands
 	-- state 2 - weapon hide
+	
 	if(state == 2) then
 		hideHUD()
 	elseif(state == 1) then
 		updateHUD()
 	end
-	helper.log("STATE: " .. state)
-	if(state ~= 7) then return end
+	if(state == 10) then
+		local currentGrStatus = grenade_mode_list[item:id()]
+		grenade_mode_list[item:id()] = currentGrStatus ~= true
+		if((currentGrStatus == false) == true) then
+			helper.log("GRENADE MODE: TRUE")
+		else
+			helper.log("GRENADE MODE: FALSE")
+		end
+	end
+	-- helper.log("STATE: " .. state)
+	if(state ~= 7 or grenade_mode_list[item:id()]) then return end
 	-- Check if item can use mags
 	if(helper.isUseMag(item:section()) == false) then
 		helper.log('this weapon is not valid for use mags')
@@ -832,6 +850,7 @@ function save_state(m_data)
 	m_data.mags_data = mags_data
 	m_data.rn_weapon_data = rn_weapon_data 
 	m_data.loadouts = loadouts
+	m_data.grenade_mode_list = grenade_mode_list
 	m_data.temporary_removed_mags = temporary_removed_mags
 end
 
@@ -839,6 +858,7 @@ function load_state(m_data)
 	released_ammo_table = m_data.released_ammo_table or {}
 	player_skill = m_data.player_skill or 1
 	exp_to_next_lvl = m_data.exp_to_next_lvl
+	grenade_mode_list = m_data.grenade_mode_list or {}
 	mags_data = m_data.mags_data or {}
 	rn_weapon_data = m_data.rn_weapon_data or {}
 	loadouts = m_data.loadouts or {}

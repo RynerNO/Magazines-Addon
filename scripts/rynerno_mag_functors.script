@@ -3,7 +3,7 @@ main = rynerno_mag
 helper = rynerno_helper
 function weapon_eject_mag_condition(weapon)
 
-	if (weapon and IsWeapon(weapon) and (not IsMelee(weapon))) then
+	if (weapon and IsWeapon(weapon) and (not IsMelee(weapon)) and main.grenade_mode_list[weapon:id()] ~= true) then
 		
 		
 		if(main.rn_weapon_data[weapon:id()]) then

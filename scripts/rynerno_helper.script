@@ -12,10 +12,20 @@ local DEBUG = 1
 local MAG_TYPE_S = "rn_mags"
 
 function log(text)
-  if(DEBUG == 1) then
-    printf(text)
-  end 
-  return
+	if(DEBUG ~= 1) then return end
+	if(type(text) == "string" or type(text) == "number") then
+		printf(text)
+	elseif (type(text) == "boolean") then
+		if(text == true) then
+			printf("True")
+		else
+			printf("False")
+		end
+	elseif(type(text) == "table") then
+		print_table(text)
+  	end
+
+
 end
 
 function isUseMag(sec) 
