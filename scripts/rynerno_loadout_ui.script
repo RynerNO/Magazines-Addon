@@ -124,7 +124,7 @@ function RN_UILoadout:Reset(obj)
   local inventory = GetActorMenu()
   if(inventory:IsShown()) then
      self.inventory = inventory
-     self:SetWndRect(Frect():set(-325,-100,1024,768))
+     self:SetWndRect(Frect():set(0,145,1024,768))
   else
     self:SetWndRect(Frect():set(0,0,1024,768))
   end

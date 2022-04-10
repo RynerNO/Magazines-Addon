@@ -4,7 +4,7 @@
 --]
 
 --[[
-Copyright (C) 2020 RynerNO
+Copyright (C) 2021 RynerNO
 -]]
 --]]
 local DEFFAULT_LOADOUT_CAP = 2 -- max mags in loadout without outfit
@@ -103,11 +103,13 @@ function get_loadout_capacity(sec)
   end
 
   -- Check common levels
+  h.log('LOADAUT CAPACITY OF:' .. sec);
   for k,v in pairs(loadout_capacity_levels) do
     local loadouts_list = str_explode(ini_sys:r_string_ex(LOADOUTS_SECTION, k), ",")
     local idx = h.indexOf(loadouts_list, sec)
     if(idx ~= -1) then
       cache_loadout_cap[sec]  = v
+      h.log(v)
       return v
     end
 
@@ -117,10 +119,10 @@ function get_loadout_capacity(sec)
     if(h.indexOf(loadouts_idividual_list) ~= -1) then
       local loadout_cap = ini_sys:r_float_ex("rn_loadout_" .. sec, "capacity")
       cache_loadout_cap[sec]  = loadout_cap
+      h.log(loadout_cap)
       return loadout_cap
-    end
 
-  cache_loadout_cap[sec]  = DEFFAULT_LOADOUT_CAP
+    end
   return DEFFAULT_LOADOUT_CAP
 end
 

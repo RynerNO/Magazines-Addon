@@ -93,7 +93,7 @@ function start(mode, obj)
 		return
 	end
 	
-	if (mode == "loot") and is_shift_pressed then
+	if (mode == "loot" and not IsInvbox(obj)) and is_shift_pressed then
 		return
 	end
 	
@@ -227,15 +227,15 @@ function UIInventory:__init() super()
 	
 	-- Item properties
 	self.properties = {
-		["donate"]          = { index= 1 ,  name= "st_donate",                 mode= {"trade"},					cont= {"actor_trade_bag","actor_trade"},precondition1= {"Cond_NotQuest"},                                          	   action= {"Action_Donate"} },
-		["use"]             = { index= 2 ,  name= "st_use",                    mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Use"},                                               	   action= {"Action_Use"} },
-		["attach_1"]        = { index= 3 ,  name_func= {"Name_Attach",1},      mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Attach",1},                                              action= {"Action_Attach",1} },
-		["attach_2"]        = { index= 4 ,  name_func= {"Name_Attach",2},      mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Attach",2},                                              action= {"Action_Attach",2} },
-		["attach_3"]        = { index= 5 ,  name_func= {"Name_Attach",3},      mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Attach",3},                                              action= {"Action_Attach",3} },
-		["to_slot"]         = { index= 6 ,  name_func= {"Name_Equip"},         mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Equip"},                                                 action= {"Action_Equip"} },
-		["to_ruck"]         = { index= 7 ,  name_func= {"Name_UnEquip"},	   mode= {"inventory","trade"},		cont= {"actor_equ","actor_belt"}, 					                                                                   action= {"Action_UnEquip"} },
-		["move"]            = { index= 8 ,  name_func= {"Name_Move"},          mode= {"loot","trade"},			cont= {"actor_equ","actor_belt","actor_bag","actor_trade_bag","actor_trade","npc_bag","npc_trade","npc_trade_bag"},   precondition1= {"Cond_Move"},                        action= {"Action_Move"} },
-		["move_all"]        = { index= 9 ,  name= "st_move_all",               mode= {"loot","trade"},			cont= {"actor_equ","actor_belt","actor_bag","actor_trade_bag","actor_trade","npc_bag","npc_trade","npc_trade_bag"},   precondition1= {"Cond_Childs"}, precondition2= {"Cond_Move"},          action= {"Action_Move_All"} },
+		["use"]             = { index= 1 ,  name= "st_use",                    mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Use"},                                               	   action= {"Action_Use"} },
+		["attach_1"]        = { index= 2 ,  name_func= {"Name_Attach",1},      mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Attach",1},                                              action= {"Action_Attach",1} },
+		["attach_2"]        = { index= 3 ,  name_func= {"Name_Attach",2},      mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Attach",2},                                              action= {"Action_Attach",2} },
+		["attach_3"]        = { index= 4 ,  name_func= {"Name_Attach",3},      mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Attach",3},                                              action= {"Action_Attach",3} },
+		["to_slot"]         = { index= 5 ,  name_func= {"Name_Equip"},         mode= {"inventory"},				cont= {"actor_bag"},                    precondition1= {"Cond_Equip"},                                                 action= {"Action_Equip"} },
+		["to_ruck"]         = { index= 6 ,  name_func= {"Name_UnEquip"},	   mode= {"inventory","trade"},		cont= {"actor_equ","actor_belt"}, 					                                                                   action= {"Action_UnEquip"} },
+		["move"]            = { index= 7 ,  name_func= {"Name_Move"},          mode= {"loot","trade"},			cont= {"actor_equ","actor_belt","actor_bag","actor_trade_bag","actor_trade","npc_bag","npc_trade","npc_trade_bag"},   precondition1= {"Cond_Move"},                        action= {"Action_Move"} },
+		["move_all"]        = { index= 8 ,  name= "st_move_all",               mode= {"loot","trade"},			cont= {"actor_equ","actor_belt","actor_bag","actor_trade_bag","actor_trade","npc_bag","npc_trade","npc_trade_bag"},   precondition1= {"Cond_Childs"}, precondition2= {"Cond_Move"},          action= {"Action_Move_All"} },
+		["donate"]          = { index= 9 ,  name= "st_donate",                 mode= {"trade"},					cont= {"actor_trade_bag","actor_trade"},precondition1= {"Cond_NotQuest"},                                          	   action= {"Action_Donate"} },
 		["unload"]          = { index= 10,  name= "st_unload_magazine",        mode= {"loot","inventory"},		cont= {"actor_equ","actor_bag","npc_bag"}, precondition1= {"Cond_Unload"},                                             action= {"Action_Unload"} },
 		["custom_1"]        = { index= 11,  name_func= {"Name_Custom",1},      mode_func= {"Mode_Custom",1},	cont_func= {"Cont_Custom",1},   		precondition1= {"Name_Custom",1 },                                             action= {"Action_Custom",1} },
 		["custom_2"]        = { index= 12,  name_func= {"Name_Custom",2},      mode_func= {"Mode_Custom",2},	cont_func= {"Cont_Custom",2},   		precondition1= {"Name_Custom",2 },                                             action= {"Action_Custom",2} },
@@ -568,7 +568,7 @@ function UIInventory:ParseInventory(npc, all, id_list)
 	local function iterate(owner,obj)
 		sec = obj:section()
 		kind = SYS_GetParam(0,sec,"kind") or "na"
-	-- RynerNO : MagsMod. I didn't fount more clean way to do this.
+			-- RynerNO : MagsMod. I didn't fount more clean way to do this.
 	for loadout,mag_list in pairs(rynerno_mag.loadouts) do
 		for id,v in pairs(mag_list) do
 			if(id == obj:id()) then return end

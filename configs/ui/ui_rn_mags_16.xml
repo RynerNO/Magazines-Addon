@@ -5,12 +5,12 @@
 		<background x="0" y="0" width="370" height="400" stretch="1">
 			<texture>ui_itm_details</texture>
 		</background>
-			<btn_close x="120" y="270" width="140" height="24" stretch="1" check_mode="0">
+			<btn_close x="120" y="265" width="140" height="24" stretch="1" check_mode="0">
 			<text font="graffiti22">ui_inv_close</text>
 			<texture>ui_inGame2_big_inventory_button</texture>
 		</btn_close>
 		
-		<cap x="265" y="70" width="55" height="37">
+		<cap x="245" y="75" width="55" height="37">
         	<text font="graffiti22" r="140" g="140" b="140" complex_mode="1" align="l" vert_align="t"/>
   		</cap>
 
